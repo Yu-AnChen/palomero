@@ -1,3 +1,5 @@
+"""Functions for transforming ROI points."""
+
 import math
 import dataclasses
 import ezomero.rois
