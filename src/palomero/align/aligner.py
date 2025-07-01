@@ -178,7 +178,7 @@ class RoiMapper:
         tform_upscale_to = Affine(
             scale=reader_to.level_downsamples[len(reader_to.pyramid) - 1]
         )
-        tform_affine = Affine(matrix=affine_matrix) + tform_upscale_to
+        tform_affine = Affine(matrix=np.linalg.inv(affine_matrix)) + tform_upscale_to
 
         all_coords = np.vstack(coords)
         # To 'from' thumbnail space
@@ -299,7 +299,7 @@ class QcPlotter:
         tform_downscale_to = Affine(
             scale=1 / reader_to.level_downsamples[len(reader_to.pyramid) - 1]
         )
-        tform_affine = tform_downscale_to + Affine(matrix=np.linalg.inv(affine_matrix))
+        tform_affine = tform_downscale_to + Affine(matrix=affine_matrix)
 
         coords_from = [tform_downscale_from(cc) for cc in coords_from]
         coords_to = [tform_affine(cc) for cc in coords_to]
