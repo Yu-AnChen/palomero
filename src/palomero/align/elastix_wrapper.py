@@ -2,21 +2,8 @@
 
 import itk
 import numpy as np
-import skimage.exposure
 import skimage.transform
 import skimage.util
-
-
-def viz_img(img):
-    in_range = np.percentile(img, [0.1, 99.9])
-    return skimage.exposure.adjust_gamma(
-        skimage.exposure.rescale_intensity(
-            img, in_range=tuple(in_range), out_range="uint8"
-        )
-        .round()
-        .astype("uint8"),
-        gain=2,
-    )
 
 
 def map_moving_points(points_xy, param_obj):
@@ -99,8 +86,8 @@ def get_default_crc_params(
 def run_non_rigid_alignment(
     ref, moving, setting, ref_mask=None, moving_mask=None, log=False
 ):
-    import tempfile
     import pathlib
+    import tempfile
 
     if setting is None:
         setting = {}

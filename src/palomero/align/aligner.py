@@ -28,8 +28,8 @@ log = logging.getLogger(__name__)
 @dataclass
 class AffineResult:
     ref_img: np.ndarray
-    moving_img: np.ndarray
-    moving_mask: np.ndarray
+    affine_moving_img: np.ndarray
+    affine_moving_mask: np.ndarray
     affine_matrix: np.ndarray
 
 
@@ -102,8 +102,8 @@ class AffineAligner(AlignmentStrategy):
 
         return AffineResult(
             ref_img=ref,
-            moving_img=warped_moving,
-            moving_mask=warped_moving_mask,
+            affine_moving_img=warped_moving,
+            affine_moving_mask=warped_moving_mask,
             affine_matrix=affine_matrix,
         )
 
@@ -117,8 +117,8 @@ class ElastixAligner(AlignmentStrategy):
         affine_result = self.affine_aligner.align(reader_ref, reader_moving, plot=plot)
 
         ref = affine_result.ref_img
-        affine_moving = affine_result.moving_img
-        affine_moving_mask = affine_result.moving_mask
+        affine_moving = affine_result.affine_moving_img
+        affine_moving_mask = affine_result.affine_moving_mask
 
         sample_size = int(np.sqrt(affine_moving_mask.sum()) / 3.0)
         n_pxs = int(sample_size**2 * 0.05)
@@ -399,14 +399,22 @@ class OmeroRoiAligner:
             )
 
         if plot:
+            int_scalar = 1.0
+            if palom.img_util.is_brightfield_img(affine_result.ref_img):
+                int_scalar = -1.0
+
             self.plotter.plot_coarse_alignment(reader_from, reader_to)
-            ref_viz = self._get_viz_img(affine_result.ref_img)
-            affine_viz = self._get_viz_img(affine_result.moving_img)
+            viz_from = self._get_viz_img(int_scalar * affine_result.ref_img)
+            viz_to_affine = self._get_viz_img(
+                int_scalar * affine_result.affine_moving_img
+            )
 
             if elastix_result:
-                elastix_viz = self._get_viz_img(elastix_result.elastix_moving_img)
+                viz_to_elastix = self._get_viz_img(
+                    int_scalar * elastix_result.elastix_moving_img
+                )
                 self.plotter.plot_elastix_alignment(
-                    reader_from, reader_to, ref_viz, affine_viz, elastix_viz
+                    reader_from, reader_to, viz_from, viz_to_affine, viz_to_elastix
                 )
 
         if self.task.map_rois:
@@ -421,15 +429,13 @@ class OmeroRoiAligner:
             )
 
             if plot:
-                viz_from = self._get_viz_img(affine_result.ref_img)
-                viz_to = self._get_viz_img(affine_result.moving_img)
                 self.plotter.plot_rois(
                     reader_from,
                     reader_to,
                     rois,
                     tformed_rois,
                     viz_from,
-                    viz_to,
+                    viz_to_affine,
                     affine_result.affine_matrix,
                 )
 
@@ -440,18 +446,12 @@ class OmeroRoiAligner:
             self.plotter.save_figures()
 
     def _get_viz_img(self, img):
-        iinv = -1.0 if palom.img_util.is_brightfield_img(img) else 1.0
-
-        return viz_img(iinv * img)
-
-
-def viz_img(img):
-    in_range = np.percentile(img, [0.1, 99.9])
-    return skimage.exposure.adjust_gamma(
-        skimage.exposure.rescale_intensity(
-            img, in_range=tuple(in_range), out_range="uint8"
+        in_range = np.percentile(img, [0.1, 99.9])
+        return skimage.exposure.adjust_gamma(
+            skimage.exposure.rescale_intensity(
+                img, in_range=tuple(in_range), out_range="uint8"
+            )
+            .round()
+            .astype("uint8"),
+            gain=1.2,
         )
-        .round()
-        .astype("uint8"),
-        gain=1.2,
-    )
