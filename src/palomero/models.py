@@ -9,10 +9,10 @@ from typing import Optional
 class AlignmentTask:
     """Parameters for a single alignment task."""
 
-    image_id_to: int
     image_id_from: int
-    channel_to: int
+    image_id_to: int
     channel_from: int
+    channel_to: int
     max_pixel_size: float
     n_keypoints: int
     auto_mask: bool
@@ -28,8 +28,8 @@ class AlignmentTask:
 class AlignmentResult:
     """Result of a single alignment task."""
 
-    image_id_to: int
     image_id_from: int
+    image_id_to: int
     success: bool
     message: str
     qc_plot_path: Optional[str] = None

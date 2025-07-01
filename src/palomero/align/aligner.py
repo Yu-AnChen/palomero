@@ -28,8 +28,8 @@ class OmeroRoiAligner:
         self.tformed_rois = None
         self.figures = []
         self.viz_ref = None
-        self.viz_mmoving = None
-        self.viz_img = None
+        self.viz_affine_moving = None
+        self.viz_elastix_moving = None
 
     def execute(self, plot=False):
         self.get_readers()
@@ -38,8 +38,8 @@ class OmeroRoiAligner:
             self.annotate_coarse_alignment_plot()
 
         if self.task.affine_only:
-            ref, mmoving, _ = self.affine_warp_moving_img()
-            self._prepare_viz_imgs(ref, mmoving, mmoving)
+            ref, affine_moving, _ = self.affine_warp_moving_img()
+            self._prepare_viz_imgs(ref, affine_moving, affine_moving)
         else:
             self.elastix_align_readers()
             if plot:
@@ -62,18 +62,18 @@ class OmeroRoiAligner:
                 plt.close(ff)
 
     def get_readers(self):
-        handler_to = omero_handler.ImageHandler(self.conn, self.task.image_id_to)
         handler_from = omero_handler.ImageHandler(self.conn, self.task.image_id_from)
+        handler_to = omero_handler.ImageHandler(self.conn, self.task.image_id_to)
 
-        self.reader1 = palom_wrapper.PalomReaderFactory.create_reader(
+        self.reader_from = palom_wrapper.PalomReaderFactory.create_reader(
             handler_from, self.task.channel_from, self.task.max_pixel_size
         )
-        self.reader2 = palom_wrapper.PalomReaderFactory.create_reader(
+        self.reader_to = palom_wrapper.PalomReaderFactory.create_reader(
             handler_to, self.task.channel_to, self.task.max_pixel_size
         )
 
     def affine_align_readers(self, plot):
-        self.aligner = palom.align.get_aligner(self.reader1, self.reader2)
+        self.aligner = palom.align.get_aligner(self.reader_from, self.reader_to)
         _mx, intensity_config = palom_wrapper.search_then_register(
             np.asarray(self.aligner.ref_thumbnail),
             np.asarray(self.aligner.moving_thumbnail),
@@ -86,72 +86,78 @@ class OmeroRoiAligner:
         self.intensity_config = intensity_config
 
     def affine_warp_moving_img(self):
-        img1, img2 = map(
+        thumbnail_from, thumbnail_to = map(
             skimage.util.img_as_float32,
-            [self.reader1.pyramid[-1][0], self.reader2.pyramid[-1][0]],
+            [self.reader_from.pyramid[-1][0], self.reader_to.pyramid[-1][0]],
         )
         tform = skimage.transform.AffineTransform(self.aligner.coarse_affine_matrix)
 
-        moving_mask = skimage.transform.warp(
-            np.full(img2.shape, fill_value=True, dtype="bool"),
+        affine_moving_mask = skimage.transform.warp(
+            np.full(thumbnail_to.shape, fill_value=True, dtype="bool"),
             tform.inverse,
-            output_shape=img1.shape,
+            output_shape=thumbnail_from.shape,
             cval=False,
         ).astype("uint8")
-        moving = skimage.transform.warp(
-            img2,
+        _affine_moving = skimage.transform.warp(
+            thumbnail_to,
             tform.inverse,
-            output_shape=img1.shape,
-            cval=np.median(img2),
+            output_shape=thumbnail_from.shape,
+            cval=np.median(thumbnail_to),
         )
-        if not np.all(moving_mask == 1):
-            dilation_radius = np.floor(np.sqrt(moving_mask.sum()) * (np.sqrt(1.1) - 1))
+        if not np.all(affine_moving_mask == 1):
+            dilation_radius = np.floor(
+                np.sqrt(affine_moving_mask.sum()) * (np.sqrt(1.1) - 1)
+            )
             cv2.dilate(
-                moving_mask,
+                affine_moving_mask,
                 kernel=skimage.morphology.disk(dilation_radius),
-                dst=moving_mask,
+                dst=affine_moving_mask,
             )
         # masked histogram matching
         # FIXME: should this be in sync with task.auto_mask?
         adjust_which, scalar, _ = self.intensity_config
-        mask = moving_mask.astype("bool")
-        ref, mmoving = palom.register_dev.match_img_with_config(
-            img1, moving, mask, mask, adjust_which, scalar, np.array
+        mask = affine_moving_mask.astype("bool")
+        ref, affine_moving = palom.register_dev.match_img_with_config(
+            thumbnail_from, _affine_moving, mask, mask, adjust_which, scalar, np.array
         )
-        return ref, mmoving, moving_mask
+        return ref, affine_moving, affine_moving_mask
 
-    def _prepare_viz_imgs(self, ref, moving_matched, final_warped_img):
+    def _prepare_viz_imgs(self, ref, affine_moving, elastix_moving):
         iinv = -1.0 if palom.img_util.is_brightfield_img(ref) else 1
         self.viz_ref = elastix_wrapper.viz_img(iinv * ref)
-        self.viz_mmoving = elastix_wrapper.viz_img(iinv * moving_matched)
-        self.viz_img = elastix_wrapper.viz_img(iinv * final_warped_img)
+        self.viz_affine_moving = elastix_wrapper.viz_img(iinv * affine_moving)
+        self.viz_elastix_moving = elastix_wrapper.viz_img(iinv * elastix_moving)
 
     def elastix_align_readers(self):
-        ref, mmoving, moving_mask = self.affine_warp_moving_img()
-        sample_size = int(np.sqrt(moving_mask.sum()) / 3.0)
+        ref, affine_moving, affine_moving_mask = self.affine_warp_moving_img()
+        sample_size = int(np.sqrt(affine_moving_mask.sum()) / 3.0)
         n_pxs = int(sample_size**2 * 0.05)
 
-        img = np.zeros_like(ref)
+        elastix_moving = np.zeros_like(ref)
         params_tform, params_config = None, None
         try:
-            img, params_tform, params_config = elastix_wrapper.run_non_rigid_alignment(
-                np.array(ref),
-                np.array(mmoving),
-                {
-                    "sample_region_size": sample_size,
-                    "sample_number_of_pixels": min(n_pxs, 10_000),
-                    "grid_size": 60,
-                },
-                moving_mask=moving_mask,
-                ref_mask=moving_mask,
-                log=False,
+            elastix_moving, params_tform, params_config = (
+                elastix_wrapper.run_non_rigid_alignment(
+                    np.array(ref),
+                    np.array(affine_moving),
+                    {
+                        "sample_region_size": sample_size,
+                        "sample_number_of_pixels": min(n_pxs, 10_000),
+                        "grid_size": 60,
+                    },
+                    moving_mask=affine_moving_mask,
+                    ref_mask=affine_moving_mask,
+                    log=False,
+                )
             )
         except RuntimeError as e:
             log.error(f"Elastix registration failed: {e}")
 
-        img = np.where(img == 0, np.median(img), img)
+        elastix_moving = np.where(
+            elastix_moving == 0, np.median(elastix_moving), elastix_moving
+        )
         self.params_tform = params_tform
-        self._prepare_viz_imgs(ref, mmoving, img)
+        self._prepare_viz_imgs(ref, affine_moving, elastix_moving)
 
     def map_rois(self):
         if self.roi is None:
@@ -164,11 +170,14 @@ class OmeroRoiAligner:
         Affine = skimage.transform.AffineTransform
 
         tform_before = Affine(
-            scale=1 / self.reader1.level_downsamples[len(self.reader1.pyramid) - 1]
+            scale=1
+            / self.reader_from.level_downsamples[len(self.reader_from.pyramid) - 1]
         )
         tform_after = Affine(
             matrix=np.linalg.inv(self.aligner.coarse_affine_matrix)
-        ) + Affine(scale=self.reader2.level_downsamples[len(self.reader2.pyramid) - 1])
+        ) + Affine(
+            scale=self.reader_to.level_downsamples[len(self.reader_to.pyramid) - 1]
+        )
         slice_anchors = [0] + np.cumsum([len(cc) for cc in coords]).tolist()
         if self.task.affine_only:
             mapped_coords = tform_after(tform_before(np.vstack(coords)))
@@ -198,8 +207,8 @@ class OmeroRoiAligner:
         task = self.task
         fig, ax = plt.gcf(), plt.gca()
 
-        name1 = self.reader1.path
-        name2 = self.reader2.path
+        name1 = self.reader_from.path
+        name2 = self.reader_to.path
         if len(name1) > 23:
             name1 = name1[:20] + "..."
         if len(name2) > 23:
@@ -238,24 +247,24 @@ class OmeroRoiAligner:
 
         Square = functools.partial(mpatches.Rectangle, xy=(0, 0), width=1, height=1)
         fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True)
-        ax1.imshow(np.dstack([self.viz_ref, self.viz_mmoving, self.viz_ref]))
-        ax2.imshow(np.dstack([self.viz_ref, self.viz_img, self.viz_ref]))
+        ax1.imshow(np.dstack([self.viz_ref, self.viz_affine_moving, self.viz_ref]))
+        ax2.imshow(np.dstack([self.viz_ref, self.viz_elastix_moving, self.viz_ref]))
         ax1.set_title("Affine alignment", fontsize=8)
         ax2.set_title("Affine + Elastix alignment", fontsize=8)
-        name1 = self.reader1.path
-        name2 = self.reader2.path
+        name1 = self.reader_from.path
+        name2 = self.reader_to.path
         if len(name1) > 23:
             name1 = name1[:20] + "..."
         if len(name2) > 23:
             name2 = name2[:20] + "..."
         handles = [
             Square(
-                color="lime",
-                label=f"Img 1: {name2} ({task.image_id_to})",
+                color="magenta",
+                label=f"From: {name1} ({task.image_id_from})",
             ),
             Square(
-                color="magenta",
-                label=f"Img 2: {name1} ({task.image_id_from})",
+                color="lime",
+                label=f"To: {name2} ({task.image_id_to})",
             ),
         ]
         ax1.legend(handles=handles, fontsize=8)
@@ -290,7 +299,8 @@ class OmeroRoiAligner:
         set_matplotlib_font(10)
         Affine = skimage.transform.AffineTransform
         tform_before = Affine(
-            scale=1 / self.reader1.level_downsamples[len(self.reader1.pyramid) - 1]
+            scale=1
+            / self.reader_from.level_downsamples[len(self.reader_from.pyramid) - 1]
         )
         coords = [
             tform_before(transform_roi_points.get_roi_points(rr)) for rr in self.rois
@@ -298,8 +308,8 @@ class OmeroRoiAligner:
 
         fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True)
 
-        name1 = self.reader1.path
-        name2 = self.reader2.path
+        name1 = self.reader_from.path
+        name2 = self.reader_to.path
         if len(name1) > 23:
             name1 = name1[:20] + "..."
         if len(name2) > 23:
@@ -309,10 +319,7 @@ class OmeroRoiAligner:
         ax2.set_title(f"To {name2} ({self.task.image_id_to})", fontsize=8)
 
         ax1.imshow(self.viz_ref, cmap="Greys")
-        if np.any(self.viz_img):
-            ax2.imshow(self.viz_img, cmap="Greys")
-        else:
-            ax2.imshow(self.viz_mmoving, cmap="Greys")
+        ax2.imshow(self.viz_elastix_moving, cmap="Greys")
 
         for cc in coords:
             if len(cc) == 1:

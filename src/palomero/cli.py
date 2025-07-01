@@ -44,8 +44,8 @@ def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
                 row_num = i + 2
                 try:
                     kwargs = {
-                        "image_id_to": int(row["image_id_to"]),
                         "image_id_from": int(row["image_id_from"]),
+                        "image_id_to": int(row["image_id_to"]),
                     }
                     for kk, vv in task_annot.items():
                         kwargs[kk] = vv(row.get(kk) or getattr(args, kk))
@@ -121,7 +121,6 @@ def main():
         metavar="ID",
         help="OMERO ID of the target image.",
     )
-
     parser.add_argument(
         "--channel-from",
         type=int,
@@ -223,8 +222,8 @@ def main():
                         )
                         failed_results.append(
                             AlignmentResult(
-                                image_id_to=task.image_id_to,
                                 image_id_from=task.image_id_from,
+                                image_id_to=task.image_id_to,
                                 success=False,
                                 message="OMERO connection lost.",
                                 row_num=task.row_num,
@@ -242,10 +241,10 @@ def main():
                 f"Starting Single Pair Mode for: {args.image_to} vs {args.image_from}"
             )
             task = AlignmentTask(
-                image_id_to=args.image_to,
                 image_id_from=args.image_from,
-                channel_to=args.channel_to,
+                image_id_to=args.image_to,
                 channel_from=args.channel_from,
+                channel_to=args.channel_to,
                 max_pixel_size=args.max_pixel_size,
                 n_keypoints=args.n_keypoints,
                 auto_mask=True,  # Assuming True as it was in the original script
