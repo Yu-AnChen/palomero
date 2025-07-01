@@ -27,23 +27,32 @@ class OmeroRoiAligner:
         self.roi = None
         self.tformed_rois = None
         self.figures = []
+        self.viz_ref = None
+        self.viz_mmoving = None
+        self.viz_img = None
 
     def execute(self, plot=False):
         self.get_readers()
         self.affine_align_readers(plot=plot)
         if plot:
             self.annotate_coarse_alignment_plot()
-        if not self.task.affine_only:
+
+        if self.task.affine_only:
+            ref, mmoving, _ = self.affine_warp_moving_img()
+            self._prepare_viz_imgs(ref, mmoving, mmoving)
+        else:
             self.elastix_align_readers()
             if plot:
                 self.plot_alignment()
+
         if self.task.map_rois:
             self.map_rois()
             if plot:
                 self.plot_rois()
             if not self.task.dry_run:
                 self.upload_transformed_rois()
-        if len(self.figures) & (self.task.qc_out_dir is not None):
+
+        if len(self.figures) and (self.task.qc_out_dir is not None):
             import matplotlib.pyplot as plt
 
             qc_dir = pathlib.Path(self.task.qc_out_dir)
@@ -76,7 +85,7 @@ class OmeroRoiAligner:
         self.aligner.coarse_affine_matrix = np.vstack([_mx, [0, 0, 1]])
         self.intensity_config = intensity_config
 
-    def elastix_align_readers(self):
+    def affine_warp_moving_img(self):
         img1, img2 = map(
             skimage.util.img_as_float32,
             [self.reader1.pyramid[-1][0], self.reader2.pyramid[-1][0]],
@@ -102,13 +111,23 @@ class OmeroRoiAligner:
                 kernel=skimage.morphology.disk(dilation_radius),
                 dst=moving_mask,
             )
-
+        # masked histogram matching
+        # FIXME: should this be in sync with task.auto_mask?
         adjust_which, scalar, _ = self.intensity_config
         mask = moving_mask.astype("bool")
         ref, mmoving = palom.register_dev.match_img_with_config(
             img1, moving, mask, mask, adjust_which, scalar, np.array
         )
+        return ref, mmoving, moving_mask
 
+    def _prepare_viz_imgs(self, ref, moving_matched, final_warped_img):
+        iinv = -1.0 if palom.img_util.is_brightfield_img(ref) else 1
+        self.viz_ref = elastix_wrapper.viz_img(iinv * ref)
+        self.viz_mmoving = elastix_wrapper.viz_img(iinv * moving_matched)
+        self.viz_img = elastix_wrapper.viz_img(iinv * final_warped_img)
+
+    def elastix_align_readers(self):
+        ref, mmoving, moving_mask = self.affine_warp_moving_img()
         sample_size = int(np.sqrt(moving_mask.sum()) / 3.0)
         n_pxs = int(sample_size**2 * 0.05)
 
@@ -130,14 +149,9 @@ class OmeroRoiAligner:
         except RuntimeError as e:
             log.error(f"Elastix registration failed: {e}")
 
-        self.params_tform = params_tform
-
         img = np.where(img == 0, np.median(img), img)
-        iinv = -1.0 if palom.img_util.is_brightfield_img(ref) else 1
-
-        self.viz_ref = elastix_wrapper.viz_img(iinv * ref)
-        self.viz_mmoving = elastix_wrapper.viz_img(iinv * mmoving)
-        self.viz_img = elastix_wrapper.viz_img(iinv * img)
+        self.params_tform = params_tform
+        self._prepare_viz_imgs(ref, mmoving, img)
 
     def map_rois(self):
         if self.roi is None:
@@ -156,14 +170,18 @@ class OmeroRoiAligner:
             matrix=np.linalg.inv(self.aligner.coarse_affine_matrix)
         ) + Affine(scale=self.reader2.level_downsamples[len(self.reader2.pyramid) - 1])
         slice_anchors = [0] + np.cumsum([len(cc) for cc in coords]).tolist()
-        if self.params_tform is None:
+        if self.task.affine_only:
             mapped_coords = tform_after(tform_before(np.vstack(coords)))
         else:
             mapped_coords = tform_after(
-                elastix_wrapper.map_fixed_points(tform_before(np.vstack(coords)), self.params_tform)
+                elastix_wrapper.map_fixed_points(
+                    tform_before(np.vstack(coords)), self.params_tform
+                )
             )
         for rr, (ss, ee) in zip(self.rois, itertools.pairwise(slice_anchors)):
-            self.tformed_rois.append(transform_roi_points.set_roi_points(rr, mapped_coords[ss:ee].round(1)))
+            self.tformed_rois.append(
+                transform_roi_points.set_roi_points(rr, mapped_coords[ss:ee].round(1))
+            )
 
     def upload_transformed_rois(self):
         if self.tformed_rois is None:
@@ -274,7 +292,9 @@ class OmeroRoiAligner:
         tform_before = Affine(
             scale=1 / self.reader1.level_downsamples[len(self.reader1.pyramid) - 1]
         )
-        coords = [tform_before(transform_roi_points.get_roi_points(rr)) for rr in self.rois]
+        coords = [
+            tform_before(transform_roi_points.get_roi_points(rr)) for rr in self.rois
+        ]
 
         fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True)
 
