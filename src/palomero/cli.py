@@ -147,7 +147,21 @@ def main():
         type=int,
         default=10_000,
         metavar="N",
-        help="Number of keypoints for SIFT feature detection.",
+        help="Number of keypoints for ORB feature detection.",
+    )
+    parser.add_argument(
+        "--auto-mask",
+        type=bool,
+        default=True,
+        metavar="DO_MASK",
+        help="Automatically mask out background before image alignment",
+    )
+    parser.add_argument(
+        "--thumbnail-max-size",
+        type=int,
+        default=2000,
+        metavar="MAX_SIZE",
+        help="Max thumbnail size when determining image orientations",
     )
     parser.add_argument(
         "--affine-only",
@@ -247,8 +261,8 @@ def main():
                 channel_to=args.channel_to,
                 max_pixel_size=args.max_pixel_size,
                 n_keypoints=args.n_keypoints,
-                auto_mask=True,  # Assuming True as it was in the original script
-                thumbnail_max_size=2000, # Assuming 2000 as it was in the original script
+                auto_mask=args.auto_mask,
+                thumbnail_max_size=args.thumbnail_max_size,
                 qc_out_dir=args.qc_out_dir,
                 map_rois=args.map_rois,
                 dry_run=args.dry_run,
