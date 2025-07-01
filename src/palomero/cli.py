@@ -86,7 +86,7 @@ def report_summary(
             key=lambda r: r.row_num if r.row_num is not None else float("inf")
         )
         for result in failed_results:
-            pair_label = f"{result.image_id_to}_vs_{result.image_id_from}"
+            pair_label = f"from_{result.image_id_from}_to_{result.image_id_to}"
             row_info = f"(CSV Row {result.row_num})" if result.row_num else ""
             log.warning(f"  - Pair {pair_label} {row_info}: {result.message}")
             print(
@@ -113,27 +113,27 @@ def main():
         "--image-from",
         type=int,
         metavar="ID",
-        help="OMERO ID of the source image.",
+        help="OMERO ID of the image to transfer ROIs from.",
     )
     parser.add_argument(
         "--image-to",
         type=int,
         metavar="ID",
-        help="OMERO ID of the target image.",
+        help="OMERO ID of the image to transfer ROIs to.",
     )
     parser.add_argument(
         "--channel-from",
         type=int,
         default=0,
         metavar="CH",
-        help="Channel index for the source image.",
+        help="Channel index for the 'from' image.",
     )
     parser.add_argument(
         "--channel-to",
         type=int,
         default=0,
         metavar="CH",
-        help="Channel index for the target image.",
+        help="Channel index for the 'to' image.",
     )
     parser.add_argument(
         "--max-pixel-size",
@@ -171,7 +171,7 @@ def main():
     parser.add_argument(
         "--map-rois",
         action="store_true",
-        help="Map ROIs from source to target image.",
+        help="Map ROIs from 'from' image to 'to' image.",
     )
     parser.add_argument(
         "--dry-run",
@@ -252,7 +252,7 @@ def main():
                     "Internal error: image_id_to or image_id_from missing for single mode."
                 )
             log.info(
-                f"Starting Single Pair Mode for: {args.image_to} vs {args.image_from}"
+                f"Starting Single Pair Mode for: from {args.image_from} to {args.image_to}"
             )
             task = AlignmentTask(
                 image_id_from=args.image_from,
