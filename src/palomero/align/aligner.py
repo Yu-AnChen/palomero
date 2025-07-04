@@ -13,13 +13,11 @@ import palom
 import skimage.exposure
 import skimage.morphology
 import skimage.transform
-import skimage.transform
 import skimage.util
 
-from . import elastix_wrapper, palom_wrapper
-from .. import omero_handler
+from .. import omero_handler, transform_roi_points
 from ..models import AlignmentTask
-from .. import transform_roi_points
+from . import elastix_wrapper, palom_wrapper
 
 log = logging.getLogger(__name__)
 
@@ -241,9 +239,10 @@ class QcPlotter:
     def plot_elastix_alignment(
         self, reader_from, reader_to, viz_ref, viz_affine, viz_elastix
     ):
-        import matplotlib.pyplot as plt
-        import matplotlib.patches as mpatches
         import functools
+
+        import matplotlib.patches as mpatches
+        import matplotlib.pyplot as plt
         from palom.cli.align_he import set_matplotlib_font
 
         set_matplotlib_font(10)
