@@ -110,6 +110,11 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output directory for QC plots.",
     )
     parser.add_argument(
+        "--close-when-done",
+        action="store_true",
+        help="Close OMERO connection when all tasks are successful.",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -252,6 +257,7 @@ def main():
     logging.basicConfig(
         level=log_level,
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
         force=True,
     )
 
@@ -316,11 +322,15 @@ def main():
         sys.exit(1)
     finally:
         if conn and conn.isConnected():
-            try:
-                # conn.close()
-                log.info("OMERO connection closed.")
-            except Exception as close_e:
-                log.warning(f"Error closing OMERO session: {close_e}")
+            all_successful = not failed_results
+            if args.close_when_done and all_successful:
+                try:
+                    conn.close()
+                    log.info("OMERO connection closed.")
+                except Exception as close_e:
+                    log.warning(f"Error closing OMERO session: {close_e}")
+            else:
+                log.info("Keeping OMERO connection open.")
 
     duration = time.time() - start_time
     report_summary(successful_results, failed_results, duration)
