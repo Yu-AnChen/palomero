@@ -19,85 +19,9 @@ from .models import AlignmentTask, AlignmentResult
 log = logging.getLogger(__name__)
 
 
-def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
-    """Reads CSV and prepares a list of AlignmentTask objects."""
-    log.info(f"Reading batch tasks from: {args.batch_csv}")
-    tasks: List[AlignmentTask] = []
-    required_headers = ["image_id_from", "image_id_to"]
-    task_annot = dict(
-        filter(
-            lambda x: (x[0] not in required_headers)
-            & (x[1] in [str, bool, int, float]),
-            inspect.get_annotations(AlignmentTask).items(),
-        )
-    )
-    try:
-        with open(args.batch_csv, mode="r", encoding="utf-8-sig") as infile:
-            reader = csv.DictReader(infile)
-            if not reader.fieldnames:
-                raise ValueError("CSV file appears to be empty or has no header.")
-            if not all(h in reader.fieldnames for h in required_headers):
-                missing = set(required_headers) - set(reader.fieldnames)
-                raise ValueError(f"CSV missing required headers: {', '.join(missing)}")
-
-            for i, row in enumerate(reader):
-                row_num = i + 2
-                try:
-                    kwargs = {
-                        "image_id_from": int(row["image_id_from"]),
-                        "image_id_to": int(row["image_id_to"]),
-                    }
-                    for kk, vv in task_annot.items():
-                        kwargs[kk] = vv(row.get(kk) or getattr(args, kk))
-                    kwargs["row_num"] = row_num
-
-                    tasks.append(AlignmentTask(**kwargs))
-                except (ValueError, TypeError, KeyError) as ve:
-                    log.warning(
-                        f"Skipping CSV row {row_num} due to invalid value or missing key: {ve}. Row data: {row}"
-                    )
-                    continue
-
-        log.info(f"Prepared {len(tasks)} tasks from CSV file.")
-        return tasks
-    except FileNotFoundError:
-        log.error(f"Batch CSV file not found: {args.batch_csv}")
-        raise
-    except Exception as e:
-        log.error(f"Failed to read or parse CSV file {args.batch_csv}: {e}")
-        raise
-
-
-def report_summary(
-    successful_results: List[AlignmentResult],
-    failed_results: List[AlignmentResult],
-    duration: float,
-):
-    """Prints the final summary to the console."""
-    total_tasks = len(successful_results) + len(failed_results)
-    print("\n--- Processing Summary ---")
-    print(f"Total tasks attempted: {total_tasks}")
-    print(f"Successful tasks: {len(successful_results)}")
-    print(f"Failed tasks: {len(failed_results)}")
-    if failed_results:
-        log.warning("Failures occurred:")
-        print("\nFailures occurred:", file=sys.stderr)
-        failed_results.sort(
-            key=lambda r: r.row_num if r.row_num is not None else float("inf")
-        )
-        for result in failed_results:
-            pair_label = f"from_{result.image_id_from}_to_{result.image_id_to}"
-            row_info = f"(CSV Row {result.row_num})" if result.row_num else ""
-            log.warning(f"  - Pair {pair_label} {row_info}: {result.message}")
-            print(
-                f"  - Pair {pair_label} {row_info}: {result.message}", file=sys.stderr
-            )
-    print(f"\nTotal execution time: {duration:.2f} seconds")
-
-
-def main():
+def create_parser() -> argparse.ArgumentParser:
+    """Creates the argument parser for the CLI."""
     os.environ["COLUMNS"] = "80"
-
     parser = argparse.ArgumentParser(
         description="Align two OMERO images and transfer ROIs between them.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -197,7 +121,128 @@ def main():
         action="version",
         version="%(prog)s 0.2.0",
     )
+    return parser
 
+
+def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
+    """Reads CSV and prepares a list of AlignmentTask objects."""
+    log.info(f"Reading batch tasks from: {args.batch_csv}")
+    tasks: List[AlignmentTask] = []
+    required_headers = ["image_id_from", "image_id_to"]
+    task_annot = dict(
+        filter(
+            lambda x: (x[0] not in required_headers)
+            and (x[1] in [str, bool, int, float]),
+            inspect.get_annotations(AlignmentTask).items(),
+        )
+    )
+    try:
+        with open(args.batch_csv, mode="r", encoding="utf-8-sig") as infile:
+            reader = csv.DictReader(infile)
+            if not reader.fieldnames:
+                raise ValueError("CSV file appears to be empty or has no header.")
+            if not all(h in reader.fieldnames for h in required_headers):
+                missing = set(required_headers) - set(reader.fieldnames)
+                raise ValueError(f"CSV missing required headers: {', '.join(missing)}")
+
+            for i, row in enumerate(reader):
+                row_num = i + 2
+                try:
+                    kwargs = {
+                        "image_id_from": int(row["image_id_from"]),
+                        "image_id_to": int(row["image_id_to"]),
+                    }
+                    for kk, vv in task_annot.items():
+                        val_from_arg = getattr(args, kk)
+                        val_from_csv = row.get(kk)
+
+                        if val_from_csv is not None and val_from_csv.strip() != "":
+                            caster = vv
+                            if caster == bool:
+                                caster = lambda x: x.lower() in (
+                                    "true",
+                                    "1",
+                                    "t",
+                                    "y",
+                                    "yes",
+                                )
+                            kwargs[kk] = caster(val_from_csv)
+                        else:
+                            kwargs[kk] = val_from_arg
+                    kwargs["row_num"] = row_num
+                    tasks.append(AlignmentTask(**kwargs))
+                except (ValueError, TypeError, KeyError) as ve:
+                    log.warning(
+                        f"Skipping CSV row {row_num} due to invalid value: {ve}. Row: {row}"
+                    )
+                    continue
+        log.info(f"Prepared {len(tasks)} tasks from CSV file.")
+        return tasks
+    except FileNotFoundError:
+        log.error(f"Batch CSV file not found: {args.batch_csv}")
+        raise
+    except Exception as e:
+        log.error(f"Failed to read or parse CSV file {args.batch_csv}: {e}")
+        raise
+
+
+def run_task(conn: BlitzGateway, task: AlignmentTask) -> AlignmentResult:
+    """Executes a single alignment task and returns the result."""
+    try:
+        log.info(f"Processing pair: from {task.image_id_from} to {task.image_id_to}")
+        aligner = OmeroRoiAligner(conn, task)
+        aligner.execute(plot=True)
+        return AlignmentResult(
+            image_id_from=task.image_id_from,
+            image_id_to=task.image_id_to,
+            success=True,
+            message="Completed successfully.",
+            row_num=task.row_num,
+        )
+    except Exception as e:
+        log.error(
+            f"Failed to process pair from {task.image_id_from} to {task.image_id_to}: {e}",
+            exc_info=True,
+        )
+        return AlignmentResult(
+            image_id_from=task.image_id_from,
+            image_id_to=task.image_id_to,
+            success=False,
+            message=str(e),
+            row_num=task.row_num,
+        )
+
+
+def report_summary(
+    successful_results: List[AlignmentResult],
+    failed_results: List[AlignmentResult],
+    duration: float,
+):
+    """Prints the final summary to the console."""
+    total_tasks = len(successful_results) + len(failed_results)
+    print("\n--- Processing Summary ---")
+    print(f"Total tasks attempted: {total_tasks}")
+    print(f"Successful tasks: {len(successful_results)}")
+    print(f"Failed tasks: {len(failed_results)}")
+    if failed_results:
+        log.warning("Failures occurred:")
+        print("\nFailures occurred:", file=sys.stderr)
+        failed_results.sort(
+            key=lambda r: r.row_num if r.row_num is not None else float("inf")
+        )
+        for result in failed_results:
+            pair_label = f"from_{result.image_id_from}_to_{result.image_id_to}"
+            row_info = f"(CSV Row {result.row_num})" if result.row_num else ""
+            log.warning(f"  - Pair {pair_label} {row_info}: {result.message}")
+            print(
+                f"  - Pair {pair_label} {row_info}: {result.message}", file=sys.stderr
+            )
+    print(f"\nTotal execution time: {duration:.2f} seconds")
+
+
+def main():
+    """Main entry point for the CLI."""
+    parser = create_parser()
     args = parser.parse_args()
 
     if args.image_id_from is not None and args.image_id_to is None:
@@ -210,71 +255,64 @@ def main():
         force=True,
     )
 
-    conn: Optional[BlitzGateway] = None
     successful_results: List[AlignmentResult] = []
     failed_results: List[AlignmentResult] = []
     start_time = time.time()
 
+    conn: Optional[BlitzGateway] = None
     try:
         conn = omero_handler.get_omero_connection()
         if not conn:
             sys.exit(1)
 
+        tasks: List[AlignmentTask] = []
         if args.batch_csv:
-            tasks = prepare_batch_tasks(args)
-            total_tasks = len(tasks)
-            if total_tasks == 0:
-                log.info("No valid tasks found in CSV. Exiting.")
-            else:
-                log.info(
-                    f"Starting sequential batch processing for {total_tasks} task(s)."
-                )
-                for task in tqdm.tqdm(tasks, desc="Processing Batch Sequentially"):
-                    if not conn.keepAlive():
-                        log.error(
-                            "OMERO connection lost during batch processing. Aborting."
-                        )
-                        failed_results.append(
-                            AlignmentResult(
-                                image_id_from=task.image_id_from,
-                                image_id_to=task.image_id_to,
-                                success=False,
-                                message="OMERO connection lost.",
-                                row_num=task.row_num,
-                            )
-                        )
-                        break
-                    aligner = OmeroRoiAligner(conn, task)
-                    aligner.execute(plot=True)
+            tasks.extend(prepare_batch_tasks(args))
         else:
-            if args.image_id_to is None or args.image_id_from is None:
-                parser.error(
-                    "Internal error: image_id_to or image_id_from missing for single mode."
+            tasks.append(
+                AlignmentTask(
+                    image_id_from=args.image_id_from,
+                    image_id_to=args.image_id_to,
+                    channel_from=args.channel_from,
+                    channel_to=args.channel_to,
+                    max_pixel_size=args.max_pixel_size,
+                    n_keypoints=args.n_keypoints,
+                    auto_mask=args.auto_mask,
+                    thumbnail_max_size=args.thumbnail_max_size,
+                    qc_out_dir=args.qc_out_dir,
+                    map_rois=args.map_rois,
+                    dry_run=args.dry_run,
+                    affine_only=args.affine_only,
+                    row_num=None,
                 )
-            log.info(
-                f"Starting Single Pair Mode for: from {args.image_id_from} to {args.image_id_to}"
             )
-            task = AlignmentTask(
-                image_id_from=args.image_id_from,
-                image_id_to=args.image_id_to,
-                channel_from=args.channel_from,
-                channel_to=args.channel_to,
-                max_pixel_size=args.max_pixel_size,
-                n_keypoints=args.n_keypoints,
-                auto_mask=args.auto_mask,
-                thumbnail_max_size=args.thumbnail_max_size,
-                qc_out_dir=args.qc_out_dir,
-                map_rois=args.map_rois,
-                dry_run=args.dry_run,
-                affine_only=args.affine_only,
-                row_num=None,
-            )
-            aligner = OmeroRoiAligner(conn, task)
-            aligner.execute(plot=True)
+
+        if not tasks:
+            log.info("No tasks to process. Exiting.")
+        else:
+            log.info(f"Starting processing for {len(tasks)} task(s).")
+            for task in tqdm.tqdm(tasks, desc="Processing Tasks"):
+                if not conn.keepAlive():
+                    log.error("OMERO connection lost. Aborting.")
+                    failed_results.append(
+                        AlignmentResult(
+                            image_id_from=task.image_id_from,
+                            image_id_to=task.image_id_to,
+                            success=False,
+                            message="OMERO connection lost.",
+                            row_num=task.row_num,
+                        )
+                    )
+                    break
+                result = run_task(conn, task)
+                if result.success:
+                    successful_results.append(result)
+                else:
+                    failed_results.append(result)
 
     except Exception as e:
-        log.error(f"Script execution failed: {e}", exc_info=True)
-        print(f"Error: {e}", file=sys.stderr)
+        log.critical(f"A critical error occurred: {e}", exc_info=True)
+        print(f"\nError: A critical error occurred: {e}", file=sys.stderr)
         sys.exit(1)
     finally:
         if conn and conn.isConnected():
