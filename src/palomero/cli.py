@@ -110,13 +110,13 @@ def main():
         help="Path to CSV file for batch processing.",
     )
     mode_group.add_argument(
-        "--image-from",
+        "--image-id-from",
         type=int,
         metavar="ID",
         help="OMERO ID of the image to transfer ROIs from.",
     )
     parser.add_argument(
-        "--image-to",
+        "--image-id-to",
         type=int,
         metavar="ID",
         help="OMERO ID of the image to transfer ROIs to.",
@@ -200,8 +200,8 @@ def main():
 
     args = parser.parse_args()
 
-    if args.image_from is not None and args.image_to is None:
-        parser.error("--image-to is required when --image-from is provided.")
+    if args.image_id_from is not None and args.image_id_to is None:
+        parser.error("--image-id-to is required when --image-id-from is provided.")
 
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
@@ -247,16 +247,16 @@ def main():
                     aligner = OmeroRoiAligner(conn, task)
                     aligner.execute(plot=True)
         else:
-            if args.image_to is None or args.image_from is None:
+            if args.image_id_to is None or args.image_id_from is None:
                 parser.error(
                     "Internal error: image_id_to or image_id_from missing for single mode."
                 )
             log.info(
-                f"Starting Single Pair Mode for: from {args.image_from} to {args.image_to}"
+                f"Starting Single Pair Mode for: from {args.image_id_from} to {args.image_id_to}"
             )
             task = AlignmentTask(
-                image_id_from=args.image_from,
-                image_id_to=args.image_to,
+                image_id_from=args.image_id_from,
+                image_id_to=args.image_id_to,
                 channel_from=args.channel_from,
                 channel_to=args.channel_to,
                 max_pixel_size=args.max_pixel_size,
@@ -279,7 +279,7 @@ def main():
     finally:
         if conn and conn.isConnected():
             try:
-                conn.close()
+                # conn.close()
                 log.info("OMERO connection closed.")
             except Exception as close_e:
                 log.warning(f"Error closing OMERO session: {close_e}")
