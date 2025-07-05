@@ -1,7 +1,31 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "palomero"
-version = "0.1.0"
-description = "Add your description here"
+dynamic = ["version"]
+authors = [{ name = "Yu-An Chen", email = "atwood12@gmail.com" }]
+description = "A command-line tool for aligning OMERO images and transferring ROIs."
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "omero-py",
+    "ezomero @ git+https://github.com/Yu-AnChen/ezomero@9a2ab53d673e718cdf5a9dbae6ca37e9a335c815",
+    "palom",
+    "tqdm",
+    "itk-elastix",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yu-anchen/palomero"
+
+[project.scripts]
+palomero = "palomero.cli:main"
+
+[tool.setuptools_scm]
