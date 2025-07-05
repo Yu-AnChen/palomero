@@ -12,17 +12,18 @@ from typing import List, Optional
 import tqdm
 from omero.gateway import BlitzGateway
 
-from . import omero_handler
+from . import __version__, omero_handler
 from .align.aligner import OmeroRoiAligner
-from .models import AlignmentTask, AlignmentResult
+from .models import AlignmentResult, AlignmentTask
 
 log = logging.getLogger(__name__)
 
 
 def configure_matplotlib_backend():
     """Configures the matplotlib backend."""
-    import matplotlib
     import platform
+
+    import matplotlib
 
     try:
         # Try to use user-specific config first
@@ -164,7 +165,7 @@ def create_parser() -> argparse.ArgumentParser:
         "-V",
         "--version",
         action="version",
-        version="%(prog)s 0.2.0",
+        version=f"%(prog)s {__version__}",
     )
     return parser
 
