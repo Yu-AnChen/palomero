@@ -174,7 +174,7 @@ def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
     """Reads CSV and prepares a list of AlignmentTask objects."""
     log.info(f"Reading batch tasks from: {args.batch_csv}")
     tasks: List[AlignmentTask] = []
-    required_headers = ["image_id_from", "image_id_to"]
+    required_headers = ["image-id-from", "image-id-to"]
     task_annot = dict(
         filter(
             lambda x: (x[0] not in required_headers)
@@ -187,8 +187,10 @@ def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
             reader = csv.DictReader(infile)
             if not reader.fieldnames:
                 raise ValueError("CSV file appears to be empty or has no header.")
-            if not all(h in reader.fieldnames for h in required_headers):
-                missing = set(required_headers) - set(reader.fieldnames)
+            # replace all - with _ in the header
+            reader.fieldnames = [f.replace("-", "_") for f in reader.fieldnames]
+            if not all(h.replace("-", "_") in reader.fieldnames for h in required_headers):
+                missing = set(required_headers) - set(h.replace("_", "-") for h in reader.fieldnames)
                 raise ValueError(f"CSV missing required headers: {', '.join(missing)}")
 
             for i, row in enumerate(reader):
