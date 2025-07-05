@@ -19,6 +19,46 @@ from .models import AlignmentTask, AlignmentResult
 log = logging.getLogger(__name__)
 
 
+def configure_matplotlib_backend():
+    """Configures the matplotlib backend."""
+    import matplotlib
+    import platform
+
+    try:
+        # Try to use user-specific config first
+        matplotlib.use(matplotlib.get_backend())
+        log.info(f"Using matplotlib backend: {matplotlib.get_backend()}")
+    except Exception:
+        log.warning(
+            "User-specific matplotlib backend not available. "
+            "Falling back to platform defaults."
+        )
+        system = platform.system()
+        if system == "Linux":
+            try:
+                matplotlib.use("Agg")
+                log.info("Using 'Agg' backend on Linux.")
+            except ImportError:
+                log.error("Failed to import 'Agg' backend on Linux.")
+        elif system == "Darwin":  # macOS
+            try:
+                matplotlib.use("TkAgg")
+                log.info("Using 'TkAgg' backend on macOS.")
+            except ImportError:
+                log.warning("Failed to import 'TkAgg' backend on macOS. Trying 'Agg'.")
+                try:
+                    matplotlib.use("Agg")
+                    log.info("Using 'Agg' backend on macOS as a fallback.")
+                except ImportError:
+                    log.error("Failed to import 'Agg' backend on macOS.")
+        elif system == "Windows":
+            try:
+                matplotlib.use("TkAgg")
+                log.info("Using 'TkAgg' backend on Windows.")
+            except ImportError:
+                log.error("Failed to import 'TkAgg' backend on Windows.")
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Creates the argument parser for the CLI."""
     os.environ["COLUMNS"] = "80"
@@ -247,6 +287,7 @@ def report_summary(
 
 def main():
     """Main entry point for the CLI."""
+    configure_matplotlib_backend()
     parser = create_parser()
     args = parser.parse_args()
 
