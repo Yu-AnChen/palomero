@@ -368,11 +368,17 @@ class QcPlotter:
 
 # --- Main Orchestrator ---
 class OmeroRoiAligner:
-    def __init__(self, conn, task: AlignmentTask):
+    """Main orchestrator for aligning two OMERO images and mapping ROIs"""
+
+    def __init__(self, conn, task: AlignmentTask, debug=False):
         self.conn = conn
         self.task = task
         self.roi_mapper = RoiMapper(self.conn)
         self.plotter = QcPlotter(self.task)
+        self.debug = debug
+        if self.debug:
+            log.info("Debug mode is ON")
+
 
     def execute(self, plot=False):
         handler_from = omero_handler.ImageHandler(self.conn, self.task.image_id_from)
@@ -443,6 +449,17 @@ class OmeroRoiAligner:
 
         if plot:
             self.plotter.save_figures()
+
+        if self.debug:
+            self.handler_from = handler_from
+            self.handler_to = handler_to
+            self.reader_from = reader_from
+            self.reader_to = reader_to
+            self.affine_result = affine_result
+            self.elastix_result = elastix_result
+            if self.task.map_rois:
+                self.rois = rois
+                self.tformed_rois = tformed_rois
 
     def _get_viz_img(self, img):
         in_range = np.percentile(img, [0.1, 99.9])
