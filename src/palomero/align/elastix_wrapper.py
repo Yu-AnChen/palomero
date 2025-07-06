@@ -122,7 +122,7 @@ def run_non_rigid_alignment(
             if "itk::ExceptionObject" in log_content:
                 msg = log_content[log_content.index("itk::ExceptionObject") :]
             raise RuntimeError(
-                f"Elastix registration failed the following error\n\n{msg}"
+                f"Elastix registration failed with the following error\n\n{msg}"
             )
         except Exception as e:
             raise e

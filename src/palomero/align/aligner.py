@@ -37,6 +37,7 @@ class ElastixResult:
     affine_moving_img: np.ndarray
     elastix_moving_img: np.ndarray
     transform_params: dict
+    error: Exception = None
 
 
 # --- Alignment Strategies ---
@@ -123,6 +124,7 @@ class ElastixAligner(AlignmentStrategy):
 
         elastix_moving = np.zeros_like(ref)
         params_tform = None
+        error = None
         try:
             elastix_moving, params_tform, _ = elastix_wrapper.run_non_rigid_alignment(
                 np.array(ref),
@@ -137,7 +139,7 @@ class ElastixAligner(AlignmentStrategy):
                 log=False,
             )
         except RuntimeError as e:
-            log.error(f"Elastix registration failed: {e}")
+            error = e
 
         elastix_moving = np.where(
             elastix_moving == 0, np.median(elastix_moving), elastix_moving
@@ -148,6 +150,7 @@ class ElastixAligner(AlignmentStrategy):
             affine_moving_img=affine_moving,
             elastix_moving_img=elastix_moving,
             transform_params=params_tform,
+            error=error,
         )
         return affine_result, elastix_result
 
@@ -246,13 +249,15 @@ class QcPlotter:
         from palom.cli.align_he import set_matplotlib_font
 
         set_matplotlib_font(10)
+        failed = np.all(viz_elastix == 0)
+        failed_text = " (failed)" if failed else ""
         task = self.task
         Square = functools.partial(mpatches.Rectangle, xy=(0, 0), width=1, height=1)
         fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True)
         ax1.imshow(np.dstack([viz_ref, viz_affine, viz_ref]))
         ax2.imshow(np.dstack([viz_ref, viz_elastix, viz_ref]))
         ax1.set_title("Affine alignment", fontsize=8)
-        ax2.set_title("Affine + Elastix alignment", fontsize=8)
+        ax2.set_title("Affine + Elastix alignment" + failed_text, fontsize=8)
 
         name1, name2 = self._get_truncated_names(reader_from.path, reader_to.path)
 
@@ -261,6 +266,8 @@ class QcPlotter:
             Square(color="lime", label=f"To: {name2} ({task.image_id_to})"),
         ]
         ax1.legend(handles=handles, fontsize=8)
+        if failed:
+            handles.pop(1)
         ax2.legend(handles=handles, fontsize=8)
 
         fig.suptitle(
@@ -379,7 +386,6 @@ class OmeroRoiAligner:
         if self.debug:
             log.info("Debug mode is ON")
 
-
     def execute(self, plot=False):
         handler_from = omero_handler.ImageHandler(self.conn, self.task.image_id_from)
         handler_to = omero_handler.ImageHandler(self.conn, self.task.image_id_to)
@@ -409,15 +415,16 @@ class OmeroRoiAligner:
                 int_scalar = -1.0
 
             self.plotter.plot_coarse_alignment(reader_from, reader_to)
+
             viz_from = self._get_viz_img(int_scalar * affine_result.ref_img)
             viz_to_affine = self._get_viz_img(
                 int_scalar * affine_result.affine_moving_img
             )
-
             if elastix_result:
                 viz_to_elastix = self._get_viz_img(
                     int_scalar * elastix_result.elastix_moving_img
                 )
+
                 self.plotter.plot_elastix_alignment(
                     reader_from, reader_to, viz_from, viz_to_affine, viz_to_elastix
                 )
@@ -460,6 +467,9 @@ class OmeroRoiAligner:
             if self.task.map_rois:
                 self.rois = rois
                 self.tformed_rois = tformed_rois
+        else:
+            if elastix_result is not None and elastix_result.error is not None:
+                raise (elastix_result.error)
 
     def _get_viz_img(self, img):
         in_range = np.percentile(img, [0.1, 99.9])

@@ -189,8 +189,12 @@ def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
                 raise ValueError("CSV file appears to be empty or has no header.")
             # replace all - with _ in the header
             reader.fieldnames = [f.replace("-", "_") for f in reader.fieldnames]
-            if not all(h.replace("-", "_") in reader.fieldnames for h in required_headers):
-                missing = set(required_headers) - set(h.replace("_", "-") for h in reader.fieldnames)
+            if not all(
+                h.replace("-", "_") in reader.fieldnames for h in required_headers
+            ):
+                missing = set(required_headers) - set(
+                    h.replace("_", "-") for h in reader.fieldnames
+                )
                 raise ValueError(f"CSV missing required headers: {', '.join(missing)}")
 
             for i, row in enumerate(reader):
@@ -273,18 +277,20 @@ def report_summary(
     print(f"Successful tasks: {len(successful_results)}")
     print(f"Failed tasks: {len(failed_results)}")
     if failed_results:
-        log.warning("Failures occurred:")
         print("\nFailures occurred:", file=sys.stderr)
         failed_results.sort(
             key=lambda r: r.row_num if r.row_num is not None else float("inf")
         )
+        error_msgs = []
         for result in failed_results:
             pair_label = f"from_{result.image_id_from}_to_{result.image_id_to}"
             row_info = f"(CSV Row {result.row_num})" if result.row_num else ""
-            log.warning(f"  - Pair {pair_label} {row_info}: {result.message}")
-            print(
-                f"  - Pair {pair_label} {row_info}: {result.message}", file=sys.stderr
-            )
+            msg = f"Pair {pair_label} {row_info}: {result.message}"
+            error_msgs.append(msg)
+            print(f"  - {msg}", file=sys.stderr)
+        log.warning("Failures occurred:")
+        for msg in error_msgs:
+            log.warning(msg)
     print(f"\nTotal execution time: {duration:.2f} seconds")
 
 
