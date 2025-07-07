@@ -18,7 +18,6 @@ dependencies = [
     "omero-py",
     "ezomero @ git+https://github.com/Yu-AnChen/ezomero@9a2ab53d673e718cdf5a9dbae6ca37e9a335c815",
     "palom",
-    "tqdm",
     "itk-elastix",
 ]
 
