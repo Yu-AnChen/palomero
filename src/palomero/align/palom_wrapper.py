@@ -1,13 +1,18 @@
 """Wraps Palom for coarse alignment."""
 
-import logging
 import itertools
+import logging
+from typing import List, Optional
+
+import cv2
 import dask.array as da
 import numpy as np
 import palom
 import palom.img_util
+from ezomero.rois import ezShape
 from palom.reader import DaPyramidChannelReader
-from .. import omero_handler
+
+from .. import omero_handler, transform_roi_points
 
 log = logging.getLogger(__name__)
 
@@ -16,8 +21,40 @@ class PalomReaderFactory:
     """Factory to create Palom readers from Image Handlers."""
 
     @staticmethod
+    def _create_mask_from_shapes(
+        shapes: List[ezShape], output_shape: tuple, downscale: float
+    ) -> np.ndarray:
+        """Creates a binary mask from a list of ezShapes."""
+        mask = np.zeros(output_shape, dtype=np.uint8)
+        if not shapes:
+            return mask
+
+        for shape in shapes:
+            # Use the helper to get points and then scale them
+            points = transform_roi_points.get_roi_points(shape)
+            scaled_pts = (points / downscale).astype(np.int32)
+
+            if len(scaled_pts) == 1:
+                # This is a Point or Label
+                cv2.circle(mask, tuple(scaled_pts[0]), 5, 255, -1)
+            elif len(scaled_pts) == 2 and isinstance(shape, ezShape.Line):
+                # This is a Line
+                thickness = max(1, int(shape.strokeWidth / downscale))
+                cv2.line(
+                    mask, tuple(scaled_pts[0]), tuple(scaled_pts[1]), 255, thickness
+                )
+            else:
+                # This is a Polygon, Polyline, Rectangle, or Ellipse
+                cv2.fillPoly(mask, [scaled_pts], 255)
+
+        return mask > 0
+
+    @staticmethod
     def create_reader(
-        handler: omero_handler.ImageHandler, channel: int, max_pixel_size: float
+        handler: omero_handler.ImageHandler,
+        channel: int,
+        max_pixel_size: float,
+        mask_roi_id: Optional[int] = None,
     ) -> DaPyramidChannelReader:
         """Creates a Palom DaPyramidChannelReader for a specific channel."""
         if not handler.is_valid():
@@ -33,6 +70,29 @@ class PalomReaderFactory:
             raise ValueError(
                 f"Could not fetch image data for reader creation: {e}"
             ) from e
+
+        if mask_roi_id is not None:
+            log.info(
+                f"Applying mask from ROI {mask_roi_id} to image {handler.image_id}"
+            )
+            try:
+                shapes = omero_handler.get_shapes_from_roi(handler._conn, mask_roi_id)
+                if shapes:
+                    downscale = handler.pyramid_config["level_downsamples"][level]
+                    mask = PalomReaderFactory._create_mask_from_shapes(
+                        shapes, img.shape, downscale
+                    )
+                    fill_value = np.median(img).astype(img.dtype)
+                    img[~mask] = fill_value  # Apply mask by setting non-ROI areas to 0
+                    log.info(
+                        f"Successfully applied mask from ROI {mask_roi_id} (fill value {fill_value})"
+                    )
+                else:
+                    log.warning(f"ROI {mask_roi_id} contains no shapes to mask.")
+            except Exception as e:
+                log.error(f"Failed to apply mask from ROI {mask_roi_id}: {e}")
+                # Decide if we should raise or just continue without mask
+                raise ValueError(f"Masking failed for ROI {mask_roi_id}") from e
 
         pyramid_config = handler.pyramid_config
         if not pyramid_config or not pyramid_config["level_shapes"]:
@@ -78,6 +138,7 @@ class PalomReaderFactory:
         reader.omero_metadata = {
             "image_id": handler.image_id,
             "channel": channel,
+            "mask_roi_id": mask_roi_id,
         }
         return reader
 

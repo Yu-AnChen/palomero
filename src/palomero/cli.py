@@ -129,6 +129,18 @@ def create_parser() -> argparse.ArgumentParser:
         help="Max thumbnail size when determining image orientations",
     )
     parser.add_argument(
+        "--from-mask-roi-id",
+        type=int,
+        metavar="ID",
+        help="ROI ID from the 'from' image to use as a mask.",
+    )
+    parser.add_argument(
+        "--to-mask-roi-id",
+        type=int,
+        metavar="ID",
+        help="ROI ID from the 'to' image to use as a mask.",
+    )
+    parser.add_argument(
         "--affine-only",
         action="store_true",
         help="Skip non-rigid alignment.",
@@ -182,6 +194,11 @@ def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
             inspect.get_annotations(AlignmentTask).items(),
         )
     )
+    # Manually add Optional[int] fields. The caster will be `int`. If the
+    # value is missing from the CSV, it will fall back to the CLI arg,
+    # which can be None.
+    task_annot["from_mask_roi_id"] = int
+    task_annot["to_mask_roi_id"] = int
     try:
         with open(args.batch_csv, mode="r", encoding="utf-8-sig") as infile:
             reader = csv.DictReader(infile)
@@ -339,6 +356,8 @@ def main():
                     map_rois=args.map_rois,
                     dry_run=args.dry_run,
                     affine_only=args.affine_only,
+                    from_mask_roi_id=args.from_mask_roi_id,
+                    to_mask_roi_id=args.to_mask_roi_id,
                     row_num=None,
                 )
             )

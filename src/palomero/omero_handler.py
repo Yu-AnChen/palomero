@@ -368,6 +368,49 @@ def _tform_mx(transform: omero.model.AffineTransformI) -> np.ndarray:
         raise TypeError(f"Unsupported transform type for _tform_mx: {type(transform)}")
 
 
+def _get_shapes_from_rois(conn: BlitzGateway, roi_ids: List[int]) -> List[ezShape]:
+    """Fetches all shapes from a list of OMERO ROI IDs."""
+    shapes: List[ezShape] = []
+    if not roi_ids:
+        return shapes
+
+    for r_id in tqdm.tqdm(roi_ids, desc="Downloading Shapes", unit="ROI"):
+        try:
+            shape_ids = ezomero.get_shape_ids(conn, r_id)
+            if not shape_ids:
+                continue
+            for s_id in shape_ids:
+                try:
+                    shape = ezomero.get_shape(conn, s_id)
+                    if shape:
+                        shapes.append(shape)
+                except Exception as e:
+                    log.warning(f"Could not get shape ID {s_id} from ROI {r_id}: {e}")
+        except Exception as e:
+            log.warning(f"Could not get shape IDs from ROI {r_id}: {e}")
+    return shapes
+
+
+def get_shapes_from_roi(conn: BlitzGateway, roi_id: int) -> List[ezShape]:
+    """Fetches all shapes from a specific OMERO ROI."""
+    log.info(f"Fetching shapes from ROI {roi_id}")
+    try:
+        # We need to find which image this ROI belongs to set the group context
+        roi = conn.getObject("Roi", roi_id)
+        if not roi:
+            raise ValueError(f"ROI with ID {roi_id} not found.")
+        image_id = roi.getImage().getId()
+        if not set_group_by_image(conn, image_id):
+            raise RuntimeError(f"Could not set context to image {image_id} group.")
+
+        shapes = _get_shapes_from_rois(conn, [roi_id])
+        log.info(f"Downloaded {len(shapes)} shapes from ROI {roi_id}.")
+        return shapes
+    except Exception as e:
+        log.error(f"Error fetching shapes from ROI {roi_id}: {e}", exc_info=True)
+        raise RuntimeError(f"Failed during shape fetch for ROI {roi_id}: {e}") from e
+
+
 def fetch_and_transform_rois(
     conn: BlitzGateway, from_image_id: int, affine_mx: np.ndarray
 ) -> List[ezShape]:
@@ -386,22 +429,7 @@ def fetch_and_transform_rois(
             return []
         log.info(f"Found {len(roi_ids)} ROIs on source image {from_image_id}.")
 
-        shapes: List[ezShape] = []
-        for rr in tqdm.tqdm(
-            roi_ids, desc=f"Downloading Shapes from {from_image_id}", unit="ROI"
-        ):
-            shape_ids = ezomero.get_shape_ids(conn, rr)
-            if not shape_ids:
-                continue
-            for ss_id in shape_ids:
-                try:
-                    shape = ezomero.get_shape(conn, ss_id)
-                    if shape:
-                        shapes.append(shape)
-                except Exception as e:
-                    log.warning(
-                        f"Could not get shape ID {ss_id} from ROI {rr} on image {from_image_id}: {e}"
-                    )
+        shapes = _get_shapes_from_rois(conn, roi_ids)
         log.info(f"Downloaded {len(shapes)} shapes.")
         if not shapes:
             return []

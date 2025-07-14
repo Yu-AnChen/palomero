@@ -391,10 +391,16 @@ class OmeroRoiAligner:
         handler_to = omero_handler.ImageHandler(self.conn, self.task.image_id_to)
 
         reader_from = palom_wrapper.PalomReaderFactory.create_reader(
-            handler_from, self.task.channel_from, self.task.max_pixel_size
+            handler=handler_from,
+            channel=self.task.channel_from,
+            max_pixel_size=self.task.max_pixel_size,
+            mask_roi_id=self.task.from_mask_roi_id,
         )
         reader_to = palom_wrapper.PalomReaderFactory.create_reader(
-            handler_to, self.task.channel_to, self.task.max_pixel_size
+            handler=handler_to,
+            channel=self.task.channel_to,
+            max_pixel_size=self.task.max_pixel_size,
+            mask_roi_id=self.task.to_mask_roi_id,
         )
 
         if self.task.affine_only:
