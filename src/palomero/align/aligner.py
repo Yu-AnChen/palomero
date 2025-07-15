@@ -394,16 +394,16 @@ class OmeroRoiAligner:
             handler=handler_from,
             channel=self.task.channel_from,
             max_pixel_size=self.task.max_pixel_size,
-            mask_roi_id=self.task.from_mask_roi_id,
+            mask_roi_id=self.task.mask_roi_id_from,
         )
         reader_to = palom_wrapper.PalomReaderFactory.create_reader(
             handler=handler_to,
             channel=self.task.channel_to,
             max_pixel_size=self.task.max_pixel_size,
-            mask_roi_id=self.task.to_mask_roi_id,
+            mask_roi_id=self.task.mask_roi_id_to,
         )
 
-        if self.task.affine_only:
+        if self.task.only_affine:
             strategy = AffineAligner(self.task)
             affine_result = strategy.align(
                 reader_ref=reader_from, reader_moving=reader_to, plot=plot

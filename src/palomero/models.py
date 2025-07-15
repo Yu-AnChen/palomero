@@ -20,9 +20,9 @@ class AlignmentTask:
     qc_out_dir: str
     map_rois: bool
     dry_run: bool
-    affine_only: bool
-    from_mask_roi_id: Optional[int] = None
-    to_mask_roi_id: Optional[int] = None
+    only_affine: bool
+    mask_roi_id_from: Optional[int] = None
+    mask_roi_id_to: Optional[int] = None
     row_num: Optional[int] = None  # For batch mode context
 
 
