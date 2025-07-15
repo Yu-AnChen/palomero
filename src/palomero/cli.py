@@ -116,7 +116,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--auto-mask",
-        type=bool,
+        type=strtobool,
         default=True,
         metavar="DO_MASK",
         help="Automatically mask out background before image alignment",
@@ -182,6 +182,15 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def strtobool(query: str) -> bool:
+    if query.lower() in ["y", "yes", "t", "true", "on", "1"]:
+        return True
+    elif query.lower() in ["n", "no", "f", "false", "off", "0"]:
+        return False
+    else:
+        raise ValueError
+
+
 def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
     """Reads CSV and prepares a list of AlignmentTask objects."""
     log.info(f"Reading batch tasks from: {args.batch_csv}")
@@ -228,13 +237,7 @@ def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
                         if val_from_csv is not None and val_from_csv.strip() != "":
                             caster = vv
                             if caster == bool:
-                                caster = lambda x: x.lower() in (
-                                    "true",
-                                    "1",
-                                    "t",
-                                    "y",
-                                    "yes",
-                                )
+                                caster = strtobool
                             kwargs[kk] = caster(val_from_csv)
                         else:
                             kwargs[kk] = val_from_arg
@@ -316,6 +319,7 @@ def main():
     configure_matplotlib_backend()
     parser = create_parser()
     args = parser.parse_args()
+    print(args)
 
     if args.image_id_from is not None and args.image_id_to is None:
         parser.error("--image-id-to is required when --image-id-from is provided.")
