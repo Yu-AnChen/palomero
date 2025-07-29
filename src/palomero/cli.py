@@ -274,7 +274,7 @@ def run_task(conn: BlitzGateway, task: AlignmentTask) -> AlignmentResult:
     except Exception as e:
         log.error(
             f"Failed to process pair from {task.image_id_from} to {task.image_id_to}: {e}",
-            exc_info=True,
+            exc_info=False,
         )
         return AlignmentResult(
             image_id_from=task.image_id_from,

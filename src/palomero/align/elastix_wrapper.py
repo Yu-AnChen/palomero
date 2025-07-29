@@ -101,7 +101,7 @@ def run_non_rigid_alignment(
     if moving_mask is None:
         moving_mask = np.full(moving.shape, fill_value=1, dtype="uint8")
 
-    with tempfile.NamedTemporaryFile(mode="w+") as log_file:
+    with tempfile.NamedTemporaryFile(mode="w+", delete=False) as log_file:
         log_dir = str(pathlib.Path(log_file.name).parent)
         log_filename = pathlib.Path(log_file.name).name
         try:
