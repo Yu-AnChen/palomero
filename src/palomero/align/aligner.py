@@ -112,14 +112,17 @@ class ElastixAligner(AlignmentStrategy):
         super().__init__(task)
         self.affine_aligner = AffineAligner(task)
 
-    def align(self, reader_ref, reader_moving, plot=False):
+    def align(self, reader_ref, reader_moving, sample_size_factor=3.0, plot=False):
         affine_result = self.affine_aligner.align(reader_ref, reader_moving, plot=plot)
 
         ref = affine_result.ref_img
         affine_moving = affine_result.affine_moving_img
         affine_moving_mask = affine_result.affine_moving_mask
 
-        sample_size = int(np.sqrt(affine_moving_mask.sum()) / 3.0)
+        # It appears that larger sample size (smaller sample size factor) is
+        # useful when the tissue area is small relative to the imaging region.
+        # While smaller sample_size works in "common" scenario.
+        sample_size = int(np.sqrt(affine_moving_mask.sum()) / sample_size_factor)
         n_pxs = int(sample_size**2 * 0.05)
 
         elastix_moving = np.zeros_like(ref)
@@ -412,7 +415,10 @@ class OmeroRoiAligner:
         else:
             strategy = ElastixAligner(self.task)
             affine_result, elastix_result = strategy.align(
-                reader_ref=reader_from, reader_moving=reader_to, plot=plot
+                reader_ref=reader_from,
+                reader_moving=reader_to,
+                sample_size_factor=self.task.sample_size_factor,
+                plot=plot,
             )
 
         if plot:

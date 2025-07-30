@@ -21,6 +21,7 @@ class AlignmentTask:
     map_rois: bool
     dry_run: bool
     only_affine: bool
+    sample_size_factor: Optional[float] = 3.0
     mask_roi_id_from: Optional[int] = None
     mask_roi_id_to: Optional[int] = None
     row_num: Optional[int] = None  # For batch mode context

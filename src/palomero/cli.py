@@ -141,6 +141,13 @@ def create_parser() -> argparse.ArgumentParser:
         help="ROI ID from the 'to' image to use as a mask.",
     )
     parser.add_argument(
+        "--sample-size-factor",
+        type=float,
+        default=3.0,
+        metavar="S_FACTOR",
+        help="Size factor during random region sampling in elastix. Default 3.0 is 1/3 of the image size. Value between 1.0-5.0 is recommended.",
+    )
+    parser.add_argument(
         "--only-affine",
         action="store_true",
         help="Skip non-rigid alignment.",
@@ -360,6 +367,7 @@ def main():
                     map_rois=args.map_rois,
                     dry_run=args.dry_run,
                     only_affine=args.only_affine,
+                    sample_size_factor=args.sample_size_factor,
                     mask_roi_id_from=args.mask_roi_id_from,
                     mask_roi_id_to=args.mask_roi_id_to,
                     row_num=None,
