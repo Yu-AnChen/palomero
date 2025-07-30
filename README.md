@@ -120,7 +120,7 @@ Process multiple image pairs sequentially from a CSV file.
     *Example (batch_file.csv)*:
 
     ```csv
-    image-id-from,image-id-to,channel-from,channel-to,affine-only
+    image-id-from,image-id-to,channel-from,channel-to,only-affine
     101,202,1,0,False
     103,204,2,1,True
     105,206,1,0,False
@@ -148,13 +148,18 @@ Here are some of the most important arguments. For a full list, run `palomero
 | `--image-id-to ID` | OMERO ID of the target image (where ROIs will be mapped). |
 | `--batch-csv FILE` | Path to a CSV file for batch processing. |
 | `--map-rois` | Flag to enable the transfer of ROIs after alignment. |
-| `--affine-only` | Flag to skip the non-rigid alignment step. |
+| `--only-affine` | Flag to skip the non-rigid alignment step. |
 | `--dry-run` | Run alignment and generate QC plots but do not write ROIs to OMERO. |
 | `--qc-out-dir DIR` | Specify a directory to save the QC plot images (default: `map-roi-qc`). |
 | `--channel-from CH` | Channel index to use for the 'from' image (default: 0). |
 | `--channel-to CH` | Channel index to use for the 'to' image (default: 0). |
-| `--max-pixel-size F`| The desired resolution (in microns per pixel) for the alignment (default: 50.0). |
-| `--n-keypoints N` | Number of features to detect for coarse alignment (default: 10000). |
+| `--max-pixel-size MICRONS`| Max pixel size for selecting pyramid level (default: 20.0). |
+| `--n-keypoints N` | Number of keypoints for ORB feature detection (default: 10000). |
+| `--auto-mask DO_MASK` | Automatically mask out background before image alignment (default: True). |
+| `--thumbnail-max-size MAX_SIZE` | Max thumbnail size when determining image orientations (default: 2000). |
+| `--mask-roi-id-from ID` | ROI ID from the 'from' image to use as a mask. |
+| `--mask-roi-id-to ID` | ROI ID from the 'to' image to use as a mask. |
+| `--sample-size-factor S_FACTOR` | Size factor for random region sampling in elastix (default: 3.0). Recommended: 1.0-5.0. |
 | `--close-when-done` | Close the OMERO connection upon successful completion of all tasks. |
 | `-v`, `--verbose` | Enable detailed logging for debugging. |
 | `-V`, `--version` | Show the version number. |

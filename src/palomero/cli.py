@@ -103,7 +103,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-pixel-size",
         type=float,
-        default=50.0,
+        default=20.0,
         metavar="MICRONS",
         help="Max pixel size for selecting pyramid level.",
     )
