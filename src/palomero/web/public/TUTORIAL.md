@@ -24,7 +24,9 @@ can do this by running the following command in your terminal, which will prompt
 you for your credentials:
 
 ```bash
-omero login
+# Log in to your OMERO server (replace placeholders)
+# The -t flag sets session timeout in seconds (optional but recommended for long runs)
+omero login -s <your.omero.server> -u <username> -p <port> -t 999999
 ```
 
 More informations for the login command can be found
