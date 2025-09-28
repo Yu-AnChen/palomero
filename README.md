@@ -71,6 +71,40 @@ It uses a robust, two-step alignment process:
     python -m pip install "palomero @ git+https://github.com/yu-anchen/palomero@main"
     ```
 
+## Web App (Optional GUI)
+
+For a graphical user experience, Palomero provides a web application.
+
+### Web App Installation
+
+To use the web app, you need to install `palomero` with the `[webapp]` extra
+dependencies. If you have already installed `palomero`, please uninstall it
+first.
+
+```bash
+python -m pip install "palomero[webapp] @ git+https://github.com/yu-anchen/palomero@main"
+```
+
+### Running the Web App
+
+1. **Log in to OMERO:** The web app requires an active OMERO session, just like
+   the CLI.
+
+    ```bash
+    omero login -s <your.omero.server> -u <username> -p <port> -t 999999
+    ```
+
+2. **Launch the app:**
+
+    ```bash
+    palomero-web
+    ```
+
+    You can then access the app in your browser at `http://localhost:5001`.
+
+For a detailed guide on using the web app, please see the [**Web App
+Tutorial**](src/palomero/web/public/TUTORIAL.md).
+
 ## Usage
 
 ### 1. Log in to OMERO
