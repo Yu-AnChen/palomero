@@ -707,8 +707,7 @@ def post_project(project_id: str, name: str, description: str):
 
 @rt
 def index(project_id: str = None, alignment_task_id: str = None):
-    curr = pathlib.Path(__file__).parent.parent.parent.parent
-    text = open(curr / "README.md").read()
+    text = open(PUBLIC_DIR / "TUTORIAL.md").read()
     main = Div(text, cls="marked")
     if (project_id is None) and (alignment_task_id is None):
         return _app_layout(nav=_nav(), main=main, side="")
@@ -951,7 +950,7 @@ def run():
 
     curr = pathlib.Path(__file__).parent
     os.chdir(curr)
-    serve(appname="palomero.web.app", reload=True, port=args.port)
+    serve(appname="palomero.web.app", host="localhost", port=args.port, reload=True)
 
 
 # serve()

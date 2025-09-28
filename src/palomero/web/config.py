@@ -14,4 +14,4 @@ PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
 
 # Copy custom CSS to public dir
 curr = pathlib.Path(__file__).resolve().parent
-shutil.copytree(curr / "css", PUBLIC_DIR / "css", dirs_exist_ok=True, symlinks=False)
+shutil.copytree(curr / "public", PUBLIC_DIR, dirs_exist_ok=True, symlinks=False)
