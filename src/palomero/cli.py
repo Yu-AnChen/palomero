@@ -116,9 +116,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--auto-mask",
-        type=strtobool,
-        default=True,
-        metavar="DO_MASK",
+        action="store_true",
         help="Automatically mask out background before image alignment",
     )
     parser.add_argument(
