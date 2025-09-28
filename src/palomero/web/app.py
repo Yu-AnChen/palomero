@@ -220,7 +220,7 @@ def _footer():
                 cls="col", id="omero-indicator", style="padding: 0px; font-size: 1.5rem"
             )("❓"),
         ),
-        Div(Small(f"palomero {palomero.__version__}"), style="text-align: center;"),
+        Div(Small(f"palomero v{palomero.__version__}"), style="text-align: center;"),
     )
 
 
