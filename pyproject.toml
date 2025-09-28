@@ -26,5 +26,9 @@ dependencies = [
 
 [project.scripts]
 palomero = "palomero.cli:main"
+palomero-web = "palomero.web.app:run"
+
+[project.optional-dependencies]
+webapp = ["python-fasthtml"]
 
 [tool.setuptools_scm]
