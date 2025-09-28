@@ -161,18 +161,17 @@ def _app_layout(nav="NAV", side="SIDE", main="MAIN", footer=""):
     loader_css = Style(
         """
         .loader-task {
-        width: 1.5rem;
-        aspect-ratio: 1;
-        border-radius: 50%;
-        background:
-            linear-gradient(#0174b0 0 0) top/100% 0% no-repeat #ddd;
-        animation: l8 infinite steps(100);
+          width: 1.5rem;
+          aspect-ratio: 1;
+          border-radius: 50%;
+          background: linear-gradient(#0174b0 0 0) top/100% 0% no-repeat #ddd;
+          animation: l8 infinite steps(100);
         }
-
+        
         @keyframes l8 {
-        100% {
-            background-size: 100% 115%
-        }
+          100% {
+            background-size: 100% 100%;
+          }
         }
         """.strip()
     )
@@ -485,7 +484,7 @@ def _form_batch(project_id: str, data: dict = None):
 def _parse_tqdm_log(file_path: str) -> str:
     output_lines = ["\n"]
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, "r") as f:
             for line in f:
                 last = output_lines[-1]
                 if line == "\n":
@@ -707,7 +706,7 @@ def post_project(project_id: str, name: str, description: str):
 
 @rt
 def index(project_id: str = None, alignment_task_id: str = None):
-    text = open(PUBLIC_DIR / "TUTORIAL.md").read()
+    text = open(PUBLIC_DIR / "TUTORIAL.md", encoding="utf-8").read()
     main = Div(text, cls="marked")
     if (project_id is None) and (alignment_task_id is None):
         return _app_layout(nav=_nav(), main=main, side="")
