@@ -1,0 +1,26 @@
+[workspace]
+channels = ["conda-forge"]
+name = "palomero-env"
+platforms = ["win-64", "osx-arm64", "linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = "3.10.*"
+numpy = "<2"
+asciitree = ">=0.3.3,<0.4"
+
+[target.win-64.pypi-dependencies]
+zeroc-ice = { url = "https://github.com/glencoesoftware/zeroc-ice-py-win-x86_64/releases/download/20240325/zeroc_ice-3.6.5-cp310-cp310-win_amd64.whl" }
+
+[target.osx-arm64.pypi-dependencies]
+zeroc-ice = { url = "https://github.com/glencoesoftware/zeroc-ice-py-macos-universal2/releases/download/20240131/zeroc_ice-3.6.5-cp310-cp310-macosx_11_0_universal2.whl" }
+
+[target.linux-64.pypi-dependencies]
+zeroc-ice = { url = "https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp310-cp310-manylinux_2_28_x86_64.whl" }
+
+[pypi-dependencies]
+palomero = { git = "https://github.com/Yu-AnChen/palomero.git", extras = [
+    "webapp",
+] }
