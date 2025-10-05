@@ -243,7 +243,7 @@ class QcPlotter:
         self._add_figure(fig, "coarse")
 
     def plot_elastix_alignment(
-        self, reader_from, reader_to, viz_ref, viz_affine, viz_elastix
+        self, reader_from, reader_to, viz_ref, viz_affine, viz_elastix, skipped
     ):
         import functools
 
@@ -253,7 +253,11 @@ class QcPlotter:
 
         set_matplotlib_font(10)
         failed = np.all(viz_elastix == 0)
-        failed_text = " (failed)" if failed else ""
+        failed_text = ""
+        if failed:
+            failed_text = " (failed)"
+        if skipped:
+            failed_text = " (skipped)"
         task = self.task
         Square = functools.partial(mpatches.Rectangle, xy=(0, 0), width=1, height=1)
         fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True)
@@ -432,14 +436,20 @@ class OmeroRoiAligner:
             viz_to_affine = self._get_viz_img(
                 int_scalar * affine_result.affine_moving_img
             )
+            viz_to_elastix = np.zeros_like(viz_from)
             if elastix_result:
                 viz_to_elastix = self._get_viz_img(
                     int_scalar * elastix_result.elastix_moving_img
                 )
 
-                self.plotter.plot_elastix_alignment(
-                    reader_from, reader_to, viz_from, viz_to_affine, viz_to_elastix
-                )
+            self.plotter.plot_elastix_alignment(
+                reader_from,
+                reader_to,
+                viz_from,
+                viz_to_affine,
+                viz_to_elastix,
+                self.task.only_affine,
+            )
 
         if self.task.map_rois:
             rois = self.roi_mapper.fetch_rois(self.task.image_id_from)
