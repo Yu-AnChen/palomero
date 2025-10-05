@@ -359,7 +359,6 @@ def _side(project_id: str = None, alignment_task_id: str = None):
     return (
         Section(
             H5("Run"),
-            Hr(),
             Div(cls="offset-1")(
                 A(
                     "Pair",
@@ -377,7 +376,11 @@ def _side(project_id: str = None, alignment_task_id: str = None):
                 )
             ),
         ),
-        Section(H5("Results"), Hr(), _side_task_section(project_id, alignment_task_id)),
+        Section(
+            H5("Results"),
+            _side_task_section(project_id, alignment_task_id),
+            style="margin-top: 2.5rem;",
+        ),
     )
 
 

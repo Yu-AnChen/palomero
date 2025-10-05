@@ -324,7 +324,7 @@ def main():
     configure_matplotlib_backend()
     parser = create_parser()
     args = parser.parse_args()
-    print(args)
+    # print(args)
 
     if args.image_id_from is not None and args.image_id_to is None:
         parser.error("--image-id-to is required when --image-id-from is provided.")
