@@ -17,6 +17,50 @@ from omero.plugins import sessions
 log = logging.getLogger(__name__)
 
 
+def _fetch_plane_tiled(
+    conn: BlitzGateway, image_object: ImageWrapper, level: int, channel: int
+) -> np.ndarray:
+    """Fetches a single 2D image plane from OMERO using tiled reading."""
+    pixels = image_object.getPrimaryPixels()
+    dtype = np.dtype(pixels.getPixelsType().getValue())
+
+    store = None
+    try:
+        store = conn.c.sf.createRawPixelsStore()
+        pixels_id = image_object.getPixelsId()
+        store.setPixelsId(pixels_id, False)
+
+        # Get shape for the selected resolution level
+        level_shapes = [
+            (rr.sizeY, rr.sizeX) for rr in store.getResolutionDescriptions()
+        ]
+        if not (0 <= level < len(level_shapes)):
+            raise IndexError(f"Resolution level {level} is out of bounds.")
+        shape_y, shape_x = level_shapes[level]
+        omero_level = range(len(level_shapes))[::-1][level]
+        store.setResolutionLevel(omero_level)
+
+        # Create an empty array to store the full-resolution image
+        full_plane = np.empty((shape_y, shape_x), dtype=dtype)
+
+        # Define a tile size (e.g., 1024x1024)
+        tile_size = 1024
+        z, c, t = 0, channel, 0  # Assuming we are always working with 2D images
+
+        for y in range(0, shape_y, tile_size):
+            for x in range(0, shape_x, tile_size):
+                h = min(tile_size, shape_y - y)
+                w = min(tile_size, shape_x - x)
+                tile = store.getTile(z, c, t, x, y, w, h)
+                full_plane[y : y + h, x : x + w] = np.frombuffer(
+                    tile, dtype=np.dtype(dtype).newbyteorder(">")
+                ).reshape((h, w))
+        return full_plane
+    finally:
+        if store:
+            store.close()
+
+
 def set_session_group(conn: BlitzGateway, group_id: int) -> bool:
     """Sets the Omero session group context if it's not already set."""
     if not conn or not conn.keepAlive():
@@ -322,28 +366,34 @@ class ImageHandler:
                 f"Channel {channel} out of bounds (0-{num_ch - 1}) for image {self.image_id}"
             )
 
-        level_index_omero = level
         shape_yx = self.pyramid_config["level_shapes"][level]
 
         log.debug(
-            f"Fetching Image: {self.image_id}, Level: {level} (Omero Index: {level_index_omero}), Channel: {channel}, Shape: {shape_yx}"
+            f"Fetching Image: {self.image_id}, Level: {level}, Channel: {channel}, Shape: {shape_yx}"
         )
 
         try:
-            _, img = ezomero.get_image(
-                conn=self._conn,
-                image_id=self.image_id,
-                pyramid_level=level_index_omero,
-                start_coords=(0, 0, 0, channel, 0),
-                axis_lengths=(*shape_yx[::-1], 1, 1, 1),
-                across_groups=False,
-            )
-            return np.squeeze(img)
+            return _fetch_plane_tiled(self._conn, self._image_object, level, channel)
         except Exception as e:
             log.error(
-                f"ezomero.get_image failed for image {self.image_id}, level {level}, channel {channel}: {e}"
+                f"Tiled fetching failed for image {self.image_id}, level {level}, channel {channel}: {e}"
             )
-            raise RuntimeError(f"Failed to fetch image plane: {e}") from e
+            log.info("Falling back to ezomero.get_image")
+            try:
+                _, img = ezomero.get_image(
+                    conn=self._conn,
+                    image_id=self.image_id,
+                    pyramid_level=level,
+                    start_coords=(0, 0, 0, channel, 0),
+                    axis_lengths=(*shape_yx[::-1], 1, 1, 1),
+                    across_groups=False,
+                )
+                return np.squeeze(img)
+            except Exception as ez_e:
+                log.error(f"ezomero.get_image also failed: {ez_e}")
+                raise RuntimeError(
+                    f"Failed to fetch image plane using all methods: {e}"
+                ) from ez_e
 
 
 def _tform_mx(transform: omero.model.AffineTransformI) -> np.ndarray:
