@@ -167,7 +167,6 @@ Process multiple image pairs sequentially from a CSV file.
     palomero --batch-csv path/to/batch_file.csv --map-rois --qc-out-dir path/to/batch_qc
 
     # Run batch mode as a dry run (only alignment check and QC plots)
-
     palomero --batch-csv path/to/batch_file.csv --dry-run --qc-out-dir path/to/batch_qc_dry
     ```
 

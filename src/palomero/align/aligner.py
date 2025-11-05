@@ -350,6 +350,8 @@ class QcPlotter:
 
     @staticmethod
     def _get_truncated_names(name1, name2):
+        name1 = str(name1)
+        name2 = str(name2)
         if len(name1) > 23:
             name1 = name1[:20] + "..."
         if len(name2) > 23:
