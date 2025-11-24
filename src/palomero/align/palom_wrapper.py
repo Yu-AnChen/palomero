@@ -125,6 +125,10 @@ class PalomReaderFactory:
             f"Creating Palom reader with {len(pyramid)} levels for image {handler.image_id}."
         )
         reader = DaPyramidChannelReader(pyramid, channel_axis=0)
+        # BUG: when there's only one level in the pyramid,
+        # `DaPyramidChannelReader` auto generate other pyramid levels until
+        # level shape < 1024 - we do not want this behavior here
+        reader.pyramid = pyramid
         reader.level_downsamples = reader.level_downsamples()
 
         base_pixel_size = handler.base_pixel_size
@@ -193,6 +197,8 @@ def search_then_register(
 
     shape_max = max(*img_left.shape, *img_right.shape)
     downsize_factor = int(np.ceil(shape_max / max_size))
+
+    print("\n\n\n\n\n", "downsize_factor", downsize_factor, "\n\n\n\n\n")
 
     img1 = img_util.cv2_downscale_local_mean(img1, downsize_factor)
     img2 = img_util.cv2_downscale_local_mean(img2, downsize_factor)
