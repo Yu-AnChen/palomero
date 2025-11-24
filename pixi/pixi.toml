@@ -8,7 +8,6 @@ version = "0.1.0"
 
 [dependencies]
 python = "3.10.*"
-numpy = "<2"
 asciitree = ">=0.3.3,<0.4"
 
 [target.win-64.pypi-dependencies]
