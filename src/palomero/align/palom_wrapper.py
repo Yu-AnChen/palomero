@@ -198,8 +198,6 @@ def search_then_register(
     shape_max = max(*img_left.shape, *img_right.shape)
     downsize_factor = int(np.ceil(shape_max / max_size))
 
-    print("\n\n\n\n\n", "downsize_factor", downsize_factor, "\n\n\n\n\n")
-
     img1 = img_util.cv2_downscale_local_mean(img1, downsize_factor)
     img2 = img_util.cv2_downscale_local_mean(img2, downsize_factor)
 
