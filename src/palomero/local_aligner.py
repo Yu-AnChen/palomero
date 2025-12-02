@@ -1,12 +1,9 @@
-"""
-Provides a class for aligning local images using palomero's logic.
-"""
-
 import pathlib
 
 import cv2
 import dask.array as da
 import dask.diagnostics
+import dask_image.ndinterp
 import numpy as np
 import palom
 import skimage.transform
@@ -116,6 +113,8 @@ class LocalPalomeroAligner:
         dask_reader = DaPyramidChannelReader(pyramid, channel_axis=0)
         dask_reader.pixel_size = base_reader.pixel_size
         dask_reader.path = base_reader.path
+        if level == 0:
+            dask_reader.pyramid = dask_reader.pyramid[:1]
         return dask_reader
 
     def _align_images(self):
@@ -158,57 +157,50 @@ class LocalPalomeroAligner:
         plotter.save_figures()
         print(f"QC plots saved in '{self.task.qc_out_dir}'.")
 
-    def _warp_and_save_image(self):
+    def _warp_and_save_image(self, _level=0):
         """Warps the moving image and saves it as a pyramidal OME-TIFF."""
 
         r1, r2 = self.base_reader_from, self.base_reader_to
-        LEVEL = 0  # Warp the highest resolution
+        LEVEL = _level  # Warp the highest resolution
         out_level1, out_level2 = palom.align_multi_res.match_levels(r1, r2)[LEVEL]
 
         affine_level2 = max(self.reader_to.level_downsamples.keys())
         affine_level1 = max(self.reader_from.level_downsamples.keys())
-        d_moving = (
-            r2.level_downsamples[affine_level2] / r2.level_downsamples[out_level2]
+        # FIXME: temporary rounding
+        d_moving = np.round(
+            self.reader_to.level_downsamples[affine_level2]
+            / r2.level_downsamples[out_level2]
         )
-        d_ref = r1.level_downsamples[affine_level1] / r1.level_downsamples[out_level1]
+        d_ref = np.round(
+            self.reader_from.level_downsamples[affine_level1]
+            / r1.level_downsamples[out_level1]
+        )
 
-        downscale_dform = d_ref
         Affine = skimage.transform.AffineTransform
 
         mx = self.affine_result.affine_matrix
-        dform = elastix_param_to_dform(self.elastix_result.transform_params)
+        _dform = elastix_param_to_dform(self.elastix_result.transform_params)
 
         tform = Affine(scale=1 / d_moving) + Affine(matrix=mx) + Affine(scale=d_ref)
 
-        mx_d = Affine(scale=downscale_dform).params
-        ddx, ddy = (
-            ((np.linalg.inv(mx[:2, :2]) @ dform.reshape(2, -1)).T @ mx_d[:2, :2])
-            .T.reshape(dform.shape)
-            .astype("float64")
-        )
+        dform = d_ref * _dform
+        out_shape = r1.pyramid[out_level1].shape[1:3]
 
-        padded_shape = r1.pyramid[out_level1].shape[1:3]
-        mapping = da.zeros((2, *padded_shape), dtype="float64", chunks=1024)
-
-        _tform = tform + Affine(scale=1 / downscale_dform)
-        # add extra pixel for linear interpolation
-        _mgrid = skimage.transform.warp_coords(_tform.inverse, np.add(ddy.shape, 1))
-        _mgrid[:, : ddy.shape[0], : ddy.shape[1]] += np.array([ddy, ddx])
-
-        gy_gx = da.array(
+        dydx = da.array(
             [
-                mapping.map_blocks(
-                    _wrap_cv2_large_proper,
-                    gg,
-                    mx=np.linalg.inv(Affine(scale=downscale_dform).params),
-                    cval=0,
-                    module="skimage",
-                    dtype="float64",
-                    drop_axis=0,
+                dask_image.ndinterp.affine_transform(
+                    dd,
+                    matrix=np.linalg.inv(Affine(scale=d_ref).params),
+                    output_shape=out_shape,
+                    output_chunks=(1024, 1024),
                 )
-                for gg in _mgrid
+                for dd in dform[::-1]
             ]
         )
+        gygx = da.indices(out_shape, dtype="float", chunks=(1024, 1024))
+        gygx += dydx
+
+        gygx = gygx.rechunk((2, 1024, 1024))
 
         # the chunk size (256, 256, 3) isn't ideal to be loaded with dask;
         # hard-code the reading and axis swap
@@ -236,18 +228,18 @@ class LocalPalomeroAligner:
         for channel in moving.values():
             sr, sc = np.ceil(np.divide(channel.shape, 1000)).astype("int")
             cval = np.percentile(np.array(channel[::sr, ::sc]), 75).item()
-            warped_moving = gy_gx.map_blocks(
+            warped_moving = gygx.map_blocks(
                 _wrap_cv2_large_proper,
                 channel,
-                mx=np.zeros((3, 3)),
+                mx=np.linalg.inv(tform.params),
                 cval=cval,
                 sigma=pre_filter_sigma,
                 module="skimage",
                 dtype=channel.dtype,
                 drop_axis=0,
             )
-            mosaics.append(warped_moving)
 
+            mosaics.append(warped_moving)
         palom.pyramid.write_pyramid(
             mosaics,
             output_path=self.out_path,
@@ -255,46 +247,29 @@ class LocalPalomeroAligner:
         )
 
 
-def _warp_coords_cv2(mx, row_slice, col_slice, out_dtype="float64"):
-    assert mx.shape == (3, 3)
-    xx, yy = (
-        np.arange(*col_slice, dtype="float64"),
-        np.arange(*row_slice, dtype="float64"),
-    )
-    grid = np.reshape(
-        np.meshgrid(xx, yy, indexing="xy"),
-        (2, 1, -1),
-    ).T
-    grid = cv2.transform(grid, mx[:2, :]).astype(out_dtype)
-
-    return np.squeeze(grid).T.reshape(2, len(yy), len(xx))[::-1]
-
-
-def _wrap_cv2_large_proper(
-    dform, img, mx, cval, sigma=0, module="cv2", block_info=None
-):
+def _wrap_cv2_large_proper(mapping_yx, img, mx, cval, sigma=0, module="cv2"):
     assert module in ["cv2", "skimage"]
     assert mx.shape == (3, 3)
-    assert dform.ndim == 3
+    assert mapping_yx.ndim == 3
+    assert mapping_yx.shape[0] == 2, mapping_yx.shape
 
-    _, H, W = dform.shape
+    _, H, W = mapping_yx.shape
 
-    dtype = "float64"
+    mapping_yx = np.array(mapping_yx)
+    if not np.all(mx == 0):
+        # matrix multiplication is faster using cv2
+        # tform = skimage.transform.AffineTransform(mx)
+        # mapping_yx = tform(mapping_yx.reshape(2, -1)[::-1].T).T[::-1].reshape(2, H, W)
 
-    _, rslice, cslice = block_info[0]["array-location"]
-
-    if np.all(mx == 0):
-        dform = np.array(dform)
-    else:
-        mgrid = _warp_coords_cv2(mx, rslice, cslice, out_dtype=dtype)
-        # remap functions in opencv convert coordinates into 16-bit integer; for
-        # large image/coordinates, slice the appropiate image block and
-        # re-position the coordinate origin is required
-        dform = np.array(dform) + mgrid
-
+        mapping_yx = (
+            cv2.transform(mapping_yx.reshape(2, -1)[::-1].T[:, np.newaxis], mx[:2])
+            .squeeze()
+            .T[::-1]
+            .reshape(2, H, W)
+        )
     # add extra pixel for linear interpolation
-    rmin, cmin = np.floor(dform.min(axis=(1, 2))).astype("int") - 1
-    rmax, cmax = np.ceil(dform.max(axis=(1, 2))).astype("int") + 1
+    rmin, cmin = np.floor(mapping_yx.min(axis=(1, 2))).astype("int") - 1
+    rmax, cmax = np.ceil(mapping_yx.max(axis=(1, 2))).astype("int") + 1
 
     if np.any(np.asarray([rmax, cmax]) <= 0):
         return np.full((H, W), fill_value=cval, dtype=img.dtype)
@@ -302,10 +277,10 @@ def _wrap_cv2_large_proper(
     rmin, cmin = np.clip([rmin, cmin], 0, None)
     rmax, cmax = np.clip([rmax, cmax], None, img.shape)
 
-    dform -= np.reshape([rmin, cmin], (2, 1, 1))
+    mapping_yx -= np.reshape([rmin, cmin], (2, 1, 1))
 
     # cast mapping down to 32-bit float for speed and compatibility
-    dform = dform.astype("float32")
+    mapping_yx = mapping_yx.astype("float32")
 
     crop_img = np.array(img[rmin:rmax, cmin:cmax])
 
@@ -328,10 +303,10 @@ def _wrap_cv2_large_proper(
         return np.full((H, W), fill_value=cval, dtype=img.dtype)
     if module == "cv2":
         return cv2.remap(
-            crop_img, dform[1], dform[0], cv2.INTER_LINEAR, borderValue=cval
+            crop_img, mapping_yx[1], mapping_yx[0], cv2.INTER_LINEAR, borderValue=cval
         )
     return skimage.transform.warp(
-        crop_img, dform, preserve_range=True, cval=cval
+        crop_img, mapping_yx, preserve_range=True, cval=cval
     ).astype(crop_img.dtype)
 
 
@@ -356,4 +331,3 @@ def parse_lsp_id(name):
     if match:
         lsp_id = match.group(0)
     return lsp_id
-
