@@ -123,6 +123,11 @@ class ElastixAligner(AlignmentStrategy):
         # useful when the tissue area is small relative to the imaging region.
         # While smaller sample_size works in "common" scenario.
         sample_size = int(np.sqrt(affine_moving_mask.sum()) / sample_size_factor)
+        if sample_size > np.min(ref.shape):
+            log.info(
+                f"Auto reduce sample_size to {np.min(ref.shape)} (was {sample_size})"
+            )
+            sample_size = np.min(ref.shape)
         n_pxs = int(sample_size**2 * 0.05)
 
         elastix_moving = np.zeros_like(ref)
