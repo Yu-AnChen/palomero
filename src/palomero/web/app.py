@@ -114,13 +114,12 @@ def dataclass_to_input(data_class, default_values: dict | None = None):
             hidden.attrs["value"] = "0"
             inputs.append((hidden, checkbox))
             continue
-        value = str(value)
-        checked = None
-        ii = [
-            snake2hyphens(kk),
-            Input(type=input_type, name=kk, value=value, checked=checked),
-        ]
-        inputs.append(Label(*ii))
+        kwargs = dict(type=input_type, name=kk, value=str(value), checked=None)
+        if tt is float:
+            kwargs["step"] = "0.01"
+        if tt is int:
+            kwargs["step"] = "1"
+        inputs.append(Label(*[snake2hyphens(kk), Input(**kwargs)]))
     return inputs
 
 
