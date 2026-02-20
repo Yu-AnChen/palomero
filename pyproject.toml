@@ -30,5 +30,21 @@ palomero-web = "palomero.web.app:run"
 
 [project.optional-dependencies]
 webapp = ["python-fasthtml"]
+dev = ["ruff", "mypy", "pre-commit"]
 
 [tool.setuptools_scm]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/palomero/web/app.py" = ["F403", "F405"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
