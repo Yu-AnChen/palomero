@@ -43,7 +43,7 @@ select = ["E", "W", "F", "I", "UP", "B", "SIM", "RUF"]
 ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/palomero/web/app.py" = ["F403", "F405"]
+"src/palomero/web/app.py" = ["F403", "F405", "RUF013", "UP045"]
 
 [tool.mypy]
 python_version = "3.10"

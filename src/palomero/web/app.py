@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import csv
 import inspect
 import io
@@ -7,6 +5,7 @@ import json
 import pathlib
 import pprint
 import shutil
+import typing
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -94,7 +93,7 @@ def dataclass_to_input(data_class, default_values: dict | None = None):
         float: "number",
         bool: "checkbox",
         str: "text",
-        int | None: "number",
+        typing.Optional[int]: "number",
     }
 
     annotations = {}
@@ -638,11 +637,7 @@ def _submitted_modal(data, mode, task_links):
 #                                    routes                                    #
 # ---------------------------------------------------------------------------- #
 @rt("/project/{project_id}/task/{alignment_task_id}")
-def get_task(
-    project_id: str | None = None,
-    alignment_task_id: str | None = None,
-    data: dict | None = None,
-):
+def get_task(project_id: str = None, alignment_task_id: str = None, data: dict = None):
     if (alignment_task_id is None) or (alignment_task_id == ""):
         return _app_layout(
             nav=_nav(project_id=project_id),
@@ -671,7 +666,7 @@ def get_task(
 
 
 @rt("/project/{project_id}")
-def get_project(project_id: str | None = None):
+def get_project(project_id: str = None):
     if (project_id is None) or (project_id == ""):
         return _app_layout(
             nav=_nav(None),
@@ -706,7 +701,7 @@ def post_project(project_id: str, name: str, description: str):
 
 
 @rt
-def index(project_id: str | None = None, alignment_task_id: str | None = None):
+def index(project_id: str = None, alignment_task_id: str = None):
     with open(PUBLIC_DIR / "TUTORIAL.md", encoding="utf-8") as f:
         text = f.read()
     main = Div(text, cls="marked")
@@ -801,7 +796,7 @@ def delete_project(project_id: str):
 
 
 @rt
-def init_delete_project(project_id: str | None = None):
+def init_delete_project(project_id: str = None):
     return Dialog(
         aria_busy="true",
         open=True,
@@ -901,7 +896,7 @@ def launch_task(task: AlignmentTask):
 
 
 @rt
-def manage_task(project_id: str | None = None):
+def manage_task(project_id: str = None):
     tasks, runnings = query_tasks(project_id)
     updates = broadcast_alignment_task_status()
     manager = Div(
