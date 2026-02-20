@@ -19,6 +19,18 @@ from ..constants import DEFAULT_PIXEL_SIZE
 log = logging.getLogger(__name__)
 
 
+class _PalomeroReader(DaPyramidChannelReader):
+    """Subclass that allows overriding the level_downsamples property."""
+
+    @property
+    def level_downsamples(self):
+        return self._level_downsamples
+
+    @level_downsamples.setter
+    def level_downsamples(self, value):
+        self._level_downsamples = value
+
+
 class PalomReaderFactory:
     """Factory to create Palom readers from Image Handlers."""
 
@@ -118,12 +130,11 @@ class PalomReaderFactory:
         log.info(
             f"Creating Palom reader with {len(pyramid)} levels for image {handler.image_id}."
         )
-        reader = DaPyramidChannelReader(pyramid, channel_axis=0)
+        reader = _PalomeroReader(pyramid, channel_axis=0)
         # BUG: when there's only one level in the pyramid,
         # `DaPyramidChannelReader` auto generate other pyramid levels until
         # level shape < 1024 - we do not want this behavior here
         reader.pyramid = pyramid
-        # Compute level_downsamples directly (avoid monkey-patching the class)
         heights = [ss.shape[1] for ss in pyramid]
         heights.insert(0, heights[0])
         downsamples = [(h1 / h2) for h1, h2 in itertools.pairwise(heights)]
