@@ -1,10 +1,12 @@
 """Handles all direct communication with the OMERO server."""
 
+from __future__ import annotations
+
 import argparse
 import dataclasses
 import logging
 from functools import cached_property
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import ezomero
 import numpy as np
@@ -13,6 +15,8 @@ import tqdm
 from ezomero.rois import ezShape
 from omero.gateway import BlitzGateway, ImageWrapper
 from omero.plugins import sessions
+
+from .constants import DEFAULT_PIXEL_SIZE, TILE_SIZE
 
 log = logging.getLogger(__name__)
 
@@ -43,8 +47,7 @@ def _fetch_plane_tiled(
         # Create an empty array to store the full-resolution image
         full_plane = np.empty((shape_y, shape_x), dtype=dtype)
 
-        # Define a tile size (e.g., 1024x1024)
-        tile_size = 1024
+        tile_size = TILE_SIZE
         z, c, t = 0, channel, 0  # Assuming we are always working with 2D images
 
         for y in range(0, shape_y, tile_size):
@@ -99,7 +102,7 @@ def set_group_by_image(conn: BlitzGateway, image_id: int) -> bool:
     return set_session_group(conn, group_id)
 
 
-def get_omero_connection(secure=True) -> Optional[BlitzGateway]:
+def get_omero_connection(secure=True) -> BlitzGateway | None:
     """
     Connects to Omero using the current active session from the Omero CLI
     sessions store.
@@ -147,8 +150,8 @@ class ImageHandler:
     """
 
     _conn: BlitzGateway
-    _image_object: Optional[ImageWrapper]
-    _group_id: Optional[int]
+    _image_object: ImageWrapper | None
+    _group_id: int | None
 
     def __init__(self, conn: BlitzGateway, image_id: int):
         self._conn = conn
@@ -173,7 +176,7 @@ class ImageHandler:
     def is_valid(self) -> bool:
         return self._image_object is not None
 
-    def _fetch_image_object(self) -> Optional[ImageWrapper]:
+    def _fetch_image_object(self) -> ImageWrapper | None:
         if not self._conn or not self._conn.keepAlive():
             log.error(f"Omero connection lost before fetching image {self.image_id}")
             return None
@@ -190,7 +193,7 @@ class ImageHandler:
             return None
 
     @property
-    def group_id(self) -> Optional[int]:
+    def group_id(self) -> int | None:
         return self._group_id
 
     @cached_property
@@ -214,7 +217,7 @@ class ImageHandler:
             return 0
 
     @cached_property
-    def pyramid_config(self) -> Dict[str, Any]:
+    def pyramid_config(self) -> dict[str, Any]:
         if not self.is_valid() or self.group_id is None:
             return {
                 "level_downsamples": [],
@@ -253,7 +256,7 @@ class ImageHandler:
             if pix:
                 pix.close()
 
-        pixel_size = 1.0
+        pixel_size = DEFAULT_PIXEL_SIZE
         try:
             primary_pixels = self._image_object.getPrimaryPixels()
             if primary_pixels:
@@ -316,7 +319,7 @@ class ImageHandler:
         return len(self.pyramid_config.get("level_shapes", []))
 
     @property
-    def base_pixel_size(self) -> Optional[float]:
+    def base_pixel_size(self) -> float | None:
         sizes = self.pyramid_config.get("level_pixel_sizes", [])
         return sizes[0] if sizes else None
 
@@ -418,9 +421,9 @@ def _tform_mx(transform: omero.model.AffineTransformI) -> np.ndarray:
         raise TypeError(f"Unsupported transform type for _tform_mx: {type(transform)}")
 
 
-def _get_shapes_from_rois(conn: BlitzGateway, roi_ids: List[int]) -> List[ezShape]:
+def _get_shapes_from_rois(conn: BlitzGateway, roi_ids: list[int]) -> list[ezShape]:
     """Fetches all shapes from a list of OMERO ROI IDs."""
-    shapes: List[ezShape] = []
+    shapes: list[ezShape] = []
     if not roi_ids:
         return shapes
 
@@ -441,7 +444,7 @@ def _get_shapes_from_rois(conn: BlitzGateway, roi_ids: List[int]) -> List[ezShap
     return shapes
 
 
-def get_shapes_from_roi(conn: BlitzGateway, roi_id: int) -> List[ezShape]:
+def get_shapes_from_roi(conn: BlitzGateway, roi_id: int) -> list[ezShape]:
     """Fetches all shapes from a specific OMERO ROI."""
     log.info(f"Fetching shapes from ROI {roi_id}")
     try:
@@ -463,7 +466,7 @@ def get_shapes_from_roi(conn: BlitzGateway, roi_id: int) -> List[ezShape]:
 
 def fetch_and_transform_rois(
     conn: BlitzGateway, from_image_id: int, affine_mx: np.ndarray
-) -> List[ezShape]:
+) -> list[ezShape]:
     """Fetches ROIs/Shapes from source image and applies transformation."""
     log.info(f"Fetching and transforming ROIs from Image {from_image_id}")
     if not set_group_by_image(conn, from_image_id):
@@ -471,7 +474,7 @@ def fetch_and_transform_rois(
             f"Could not set context to source image {from_image_id} group."
         )
 
-    shapes_transformed: List[ezShape] = []
+    shapes_transformed: list[ezShape] = []
     try:
         roi_ids = ezomero.get_roi_ids(conn, from_image_id)
         if not roi_ids:
@@ -508,7 +511,7 @@ def fetch_and_transform_rois(
     return shapes_transformed
 
 
-def post_rois(conn: BlitzGateway, to_image_id: int, shapes: List[ezShape]) -> int:
+def post_rois(conn: BlitzGateway, to_image_id: int, shapes: list[ezShape]) -> int:
     """Posts transformed shapes to the target image."""
     if not shapes:
         log.info("No shapes provided for posting.")

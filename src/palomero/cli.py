@@ -1,5 +1,7 @@
 """Command-line interface for Palomero."""
 
+from __future__ import annotations
+
 import argparse
 import csv
 import inspect
@@ -7,7 +9,6 @@ import logging
 import os
 import sys
 import time
-from typing import List, Optional
 
 import tqdm
 from omero.gateway import BlitzGateway
@@ -19,7 +20,7 @@ from .models import AlignmentResult, AlignmentTask
 log = logging.getLogger(__name__)
 
 
-def configure_matplotlib_backend():
+def configure_matplotlib_backend() -> None:
     """Configures the matplotlib backend."""
     import platform
 
@@ -196,15 +197,16 @@ def strtobool(query: str) -> bool:
         raise ValueError
 
 
-def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
+def prepare_batch_tasks(args: argparse.Namespace) -> list[AlignmentTask]:
     """Reads CSV and prepares a list of AlignmentTask objects."""
     log.info(f"Reading batch tasks from: {args.batch_csv}")
-    tasks: List[AlignmentTask] = []
+    tasks: list[AlignmentTask] = []
     required_headers = ["image-id-from", "image-id-to"]
     task_annot = dict(
         filter(
-            lambda x: (x[0] not in required_headers)
-            and (x[1] in [str, bool, int, float]),
+            lambda x: (
+                (x[0] not in required_headers) and (x[1] in [str, bool, int, float])
+            ),
             inspect.get_annotations(AlignmentTask).items(),
         )
     )
@@ -214,7 +216,7 @@ def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
     task_annot["mask_roi_id_from"] = int
     task_annot["mask_roi_id_to"] = int
     try:
-        with open(args.batch_csv, mode="r", encoding="utf-8-sig") as infile:
+        with open(args.batch_csv, encoding="utf-8-sig") as infile:
             reader = csv.DictReader(infile)
             if not reader.fieldnames:
                 raise ValueError("CSV file appears to be empty or has no header.")
@@ -241,7 +243,7 @@ def prepare_batch_tasks(args: argparse.Namespace) -> List[AlignmentTask]:
 
                         if val_from_csv is not None and val_from_csv.strip() != "":
                             caster = vv
-                            if caster == bool:
+                            if caster is bool:
                                 caster = strtobool
                             kwargs[kk] = caster(val_from_csv)
                         else:
@@ -291,10 +293,10 @@ def run_task(conn: BlitzGateway, task: AlignmentTask) -> AlignmentResult:
 
 
 def report_summary(
-    successful_results: List[AlignmentResult],
-    failed_results: List[AlignmentResult],
+    successful_results: list[AlignmentResult],
+    failed_results: list[AlignmentResult],
     duration: float,
-):
+) -> None:
     """Prints the final summary to the console."""
     total_tasks = len(successful_results) + len(failed_results)
     print("\n--- Processing Summary ---")
@@ -319,12 +321,11 @@ def report_summary(
     print(f"\nTotal execution time: {duration:.2f} seconds")
 
 
-def main():
+def main() -> None:
     """Main entry point for the CLI."""
     configure_matplotlib_backend()
     parser = create_parser()
     args = parser.parse_args()
-    # print(args)
 
     if args.image_id_from is not None and args.image_id_to is None:
         parser.error("--image-id-to is required when --image-id-from is provided.")
@@ -337,17 +338,17 @@ def main():
         force=True,
     )
 
-    successful_results: List[AlignmentResult] = []
-    failed_results: List[AlignmentResult] = []
+    successful_results: list[AlignmentResult] = []
+    failed_results: list[AlignmentResult] = []
     start_time = time.time()
 
-    conn: Optional[BlitzGateway] = None
+    conn: BlitzGateway | None = None
     try:
         conn = omero_handler.get_omero_connection()
         if not conn:
             sys.exit(1)
 
-        tasks: List[AlignmentTask] = []
+        tasks: list[AlignmentTask] = []
         if args.batch_csv:
             tasks.extend(prepare_batch_tasks(args))
         else:

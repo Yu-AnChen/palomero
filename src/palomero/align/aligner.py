@@ -1,11 +1,13 @@
 """Main alignment orchestrator class."""
 
+from __future__ import annotations
+
 import abc
 import itertools
 import logging
 import pathlib
 from dataclasses import dataclass
-from typing import List
+from typing import Any
 
 import cv2
 import numpy as np
@@ -16,6 +18,12 @@ import skimage.transform
 import skimage.util
 
 from .. import omero_handler, transform_roi_points
+from ..constants import (
+    DEFAULT_GRID_SIZE,
+    MAX_SAMPLE_PIXELS,
+    NAME_TRUNCATION_LENGTH,
+    PERCENTILE_RANGE,
+)
 from ..models import AlignmentTask
 from . import elastix_wrapper, palom_wrapper
 
@@ -46,12 +54,14 @@ class AlignmentStrategy(abc.ABC):
         self.task = task
 
     @abc.abstractmethod
-    def align(self, reader_ref, reader_moving, plot=False):
+    def align(self, reader_ref: Any, reader_moving: Any, plot: bool = False) -> Any:
         pass
 
 
 class AffineAligner(AlignmentStrategy):
-    def align(self, reader_ref, reader_moving, plot=False):
+    def align(
+        self, reader_ref: Any, reader_moving: Any, plot: bool = False
+    ) -> AffineResult:
         aligner = palom.align.get_aligner(reader_ref, reader_moving)
         _mx, intensity_config = palom_wrapper.search_then_register(
             np.asarray(aligner.ref_thumbnail),
@@ -112,7 +122,13 @@ class ElastixAligner(AlignmentStrategy):
         super().__init__(task)
         self.affine_aligner = AffineAligner(task)
 
-    def align(self, reader_ref, reader_moving, sample_size_factor=3.0, plot=False):
+    def align(
+        self,
+        reader_ref: Any,
+        reader_moving: Any,
+        sample_size_factor: float = 3.0,
+        plot: bool = False,
+    ) -> tuple[AffineResult, ElastixResult]:
         affine_result = self.affine_aligner.align(reader_ref, reader_moving, plot=plot)
 
         ref = affine_result.ref_img
@@ -140,8 +156,8 @@ class ElastixAligner(AlignmentStrategy):
                 np.array(affine_moving),
                 {
                     "sample_region_size": sample_size,
-                    "sample_number_of_pixels": min(n_pxs, 10_000),
-                    "grid_size": 60,
+                    "sample_number_of_pixels": min(n_pxs, MAX_SAMPLE_PIXELS),
+                    "grid_size": DEFAULT_GRID_SIZE,
                 },
                 moving_mask=affine_moving_mask,
                 ref_mask=affine_moving_mask,
@@ -166,15 +182,20 @@ class ElastixAligner(AlignmentStrategy):
 
 # --- ROI Mapper ---
 class RoiMapper:
-    def __init__(self, conn):
+    def __init__(self, conn: Any) -> None:
         self.conn = conn
 
-    def fetch_rois(self, image_id):
+    def fetch_rois(self, image_id: int) -> list:
         return omero_handler.fetch_and_transform_rois(self.conn, image_id, np.eye(3))
 
     def transform_rois(
-        self, rois, reader_from, reader_to, affine_matrix, elastix_params=None
-    ):
+        self,
+        rois: list,
+        reader_from: Any,
+        reader_to: Any,
+        affine_matrix: np.ndarray,
+        elastix_params: Any | None = None,
+    ) -> list:
         tformed_rois = []
         coords = [transform_roi_points.get_roi_points(rr) for rr in rois]
         if not coords:
@@ -201,14 +222,14 @@ class RoiMapper:
         # To 'to' full resolution space
         all_coords = tform_affine(all_coords)
 
-        slice_anchors = [0] + np.cumsum([len(cc) for cc in coords]).tolist()
-        for rr, (ss, ee) in zip(rois, itertools.pairwise(slice_anchors)):
+        slice_anchors = [0, *np.cumsum([len(cc) for cc in coords]).tolist()]
+        for rr, (ss, ee) in zip(rois, itertools.pairwise(slice_anchors), strict=False):
             tformed_rois.append(
                 transform_roi_points.set_roi_points(rr, all_coords[ss:ee].round(1))
             )
         return tformed_rois
 
-    def upload_rois(self, image_id, rois):
+    def upload_rois(self, image_id: int, rois: list) -> None:
         if not rois:
             log.info("No ROIs to upload.")
             return
@@ -219,9 +240,9 @@ class RoiMapper:
 class QcPlotter:
     def __init__(self, task: AlignmentTask):
         self.task = task
-        self.figures: List[pathlib.Path] = []
+        self.figures: list = []
 
-    def plot_coarse_alignment(self, reader_from, reader_to):
+    def plot_coarse_alignment(self, reader_from: Any, reader_to: Any) -> None:
         import matplotlib.pyplot as plt
         from palom.cli.align_he import set_matplotlib_font, set_subplot_size
 
@@ -249,8 +270,14 @@ class QcPlotter:
         self._add_figure(fig, "coarse")
 
     def plot_elastix_alignment(
-        self, reader_from, reader_to, viz_ref, viz_affine, viz_elastix, skipped
-    ):
+        self,
+        reader_from: Any,
+        reader_to: Any,
+        viz_ref: np.ndarray,
+        viz_affine: np.ndarray,
+        viz_elastix: np.ndarray,
+        skipped: bool,
+    ) -> None:
         import functools
 
         import matplotlib.patches as mpatches
@@ -294,14 +321,14 @@ class QcPlotter:
 
     def plot_rois(
         self,
-        reader_from,
-        reader_to,
-        rois_from,
-        rois_to,
-        viz_from,
-        viz_to,
-        affine_matrix,
-    ):
+        reader_from: Any,
+        reader_to: Any,
+        rois_from: list,
+        rois_to: list,
+        viz_from: np.ndarray,
+        viz_to: np.ndarray,
+        affine_matrix: np.ndarray,
+    ) -> None:
         import matplotlib.pyplot as plt
         from palom.cli.align_he import set_matplotlib_font
 
@@ -339,7 +366,7 @@ class QcPlotter:
         self._set_figure_size(fig, ax1.images[0].get_array().shape[:2], 2)
         self._add_figure(fig, "roi")
 
-    def save_figures(self):
+    def save_figures(self) -> None:
         if len(self.figures) and (self.task.qc_out_dir is not None):
             import matplotlib.pyplot as plt
 
@@ -349,23 +376,23 @@ class QcPlotter:
                 fig.savefig(qc_dir / f"{fig.name}.jpg", dpi=144, bbox_inches="tight")
                 plt.close(fig)
 
-    def _add_figure(self, fig, suffix):
+    def _add_figure(self, fig: Any, suffix: str) -> None:
         pair_label = f"from_{self.task.image_id_from}_to_{self.task.image_id_to}"
         fig.name = f"qc_alignment-{pair_label}-{suffix}"
         self.figures.append(fig)
 
     @staticmethod
-    def _get_truncated_names(name1, name2):
+    def _get_truncated_names(name1: str, name2: str) -> tuple[str, str]:
         name1 = str(name1)
         name2 = str(name2)
-        if len(name1) > 23:
-            name1 = name1[:20] + "..."
-        if len(name2) > 23:
-            name2 = name2[:20] + "..."
+        if len(name1) > NAME_TRUNCATION_LENGTH:
+            name1 = name1[: NAME_TRUNCATION_LENGTH - 3] + "..."
+        if len(name2) > NAME_TRUNCATION_LENGTH:
+            name2 = name2[: NAME_TRUNCATION_LENGTH - 3] + "..."
         return name1, name2
 
     @staticmethod
-    def _set_figure_size(fig, shape, num_subplots):
+    def _set_figure_size(fig: Any, shape: tuple, num_subplots: int) -> None:
         im_h, im_w = shape
         if im_w < 500:
             im_h *= 500 / im_w
@@ -377,7 +404,7 @@ class QcPlotter:
         fig.tight_layout(pad=1.5)
 
     @staticmethod
-    def _draw_rois(ax, coords_list):
+    def _draw_rois(ax: Any, coords_list: list[np.ndarray]) -> None:
         for cc in coords_list:
             if len(cc) == 1:
                 ax.plot(*cc[0], marker="o", alpha=0.7, color="royalblue")
@@ -392,7 +419,7 @@ class QcPlotter:
 class OmeroRoiAligner:
     """Main orchestrator for aligning two OMERO images and mapping ROIs"""
 
-    def __init__(self, conn, task: AlignmentTask, debug=False):
+    def __init__(self, conn: Any, task: AlignmentTask, debug: bool = False) -> None:
         self.conn = conn
         self.task = task
         self.roi_mapper = RoiMapper(self.conn)
@@ -401,7 +428,7 @@ class OmeroRoiAligner:
         if self.debug:
             log.info("Debug mode is ON")
 
-    def execute(self, plot=False):
+    def execute(self, plot: bool = False) -> None:
         handler_from = omero_handler.ImageHandler(self.conn, self.task.image_id_from)
         handler_to = omero_handler.ImageHandler(self.conn, self.task.image_id_to)
 
@@ -501,8 +528,8 @@ class OmeroRoiAligner:
             if elastix_result is not None and elastix_result.error is not None:
                 raise (elastix_result.error)
 
-    def _get_viz_img(self, img):
-        in_range = np.percentile(img, [0.1, 99.9])
+    def _get_viz_img(self, img: np.ndarray) -> np.ndarray:
+        in_range = np.percentile(img, list(PERCENTILE_RANGE))
         return skimage.exposure.adjust_gamma(
             skimage.exposure.rescale_intensity(
                 img, in_range=tuple(in_range), out_range="uint8"

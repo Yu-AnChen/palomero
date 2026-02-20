@@ -1,7 +1,6 @@
 import pathlib
 import shutil
 
-
 # Define the application's root directory in the user's home folder
 APP_DIR = pathlib.Path.home() / ".palomero"
 APP_DIR.mkdir(parents=True, exist_ok=True)

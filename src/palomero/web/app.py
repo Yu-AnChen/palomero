@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 import inspect
 import io
@@ -5,16 +7,15 @@ import json
 import pathlib
 import pprint
 import shutil
-import typing
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime
 
-# ruff: noqa: F405,F403
 from fasthtml.common import *
 
 import palomero.models
 import palomero.omero_handler
+from palomero.constants import MAX_TASK_RUNTIME_SECONDS
 
 from .config import DB_PATH, PUBLIC_DIR
 
@@ -24,7 +25,6 @@ app, rt = fast_app(
     hdrs=[
         Link(rel="stylesheet", href="/css/bootstrap-grid.css"),
         MarkdownJS(),
-        # HighlightJS(langs=["python", "javascript", "html", "css"]),
     ],
     title="palomero: Align OMERO ROIs",
     static_path=PUBLIC_DIR,
@@ -68,7 +68,6 @@ class DefaultTask:
     only_affine: bool = False
     map_rois: bool = False
     dry_run: bool = True
-    # qc_out_dir: str = ""
 
 
 def patch_checkbox(data: dict):
@@ -87,7 +86,7 @@ def empty_str_to_none(data: dict):
     return {kk: None if json.dumps(vv) == '""' else vv for kk, vv in data.items()}
 
 
-def dataclass_to_input(data_class, default_values: dict = None):
+def dataclass_to_input(data_class, default_values: dict | None = None):
     if default_values is None:
         default_values = {}
     input_type_map = {
@@ -95,7 +94,7 @@ def dataclass_to_input(data_class, default_values: dict = None):
         float: "number",
         bool: "checkbox",
         str: "text",
-        typing.Optional[int]: "number",
+        int | None: "number",
     }
 
     annotations = {}
@@ -131,8 +130,6 @@ def strtobool(query: str) -> bool:
         return True
     elif query.lower() in ["n", "no", "f", "false", "off", "0"]:
         return False
-    # elif query.lower() in ["null", "none", ""]:
-    #     return False
     else:
         print(query)
         raise ValueError
@@ -167,7 +164,7 @@ def _app_layout(nav="NAV", side="SIDE", main="MAIN", footer=""):
           background: linear-gradient(#0174b0 0 0) top/100% 0% no-repeat #ddd;
           animation: l8 infinite steps(100);
         }
-        
+
         @keyframes l8 {
           100% {
             background-size: 100% 100%;
@@ -224,7 +221,7 @@ def _footer():
     )
 
 
-def _nav(project_id: str = None, is_new_project: bool = False):
+def _nav(project_id: str | None = None, is_new_project: bool = False):
     text_branding = Hgroup(
         hx_trigger="click",
         hx_get="/",
@@ -348,14 +345,14 @@ def _side_task_section(project_id: str, alignment_task_id: str):
     tasks = [
         _side_task_link(
             tt,
-            aria_current=True if tt.alignment_task_id == alignment_task_id else False,
+            aria_current=tt.alignment_task_id == alignment_task_id,
         )
         for tt in t_alignment_task("project_id=?", (project_id,), order_by="created_at")
     ]
     return Div(id=f"section-results-{project_id}")(*tasks[::-1])
 
 
-def _side(project_id: str = None, alignment_task_id: str = None):
+def _side(project_id: str | None = None, alignment_task_id: str | None = None):
     return (
         Section(
             H5("Run"),
@@ -384,8 +381,7 @@ def _side(project_id: str = None, alignment_task_id: str = None):
     )
 
 
-def _form_pair(project_id: str, data: dict = None):
-    # print("data:", data, "\n\n\n")
+def _form_pair(project_id: str, data: dict | None = None):
     inputs = dataclass_to_input(DefaultTask, data)
     for ii in inputs:
         if "image_id" in str(ii):
@@ -421,7 +417,7 @@ def _dicts_to_table(dicts: list, index: bool = True):
     return Table(Thead(header_row), Tbody(*rows))
 
 
-def _form_batch(project_id: str, data: dict = None):
+def _form_batch(project_id: str, data: dict | None = None):
     if data is None:
         data = {}
     data = patch_checkbox(data)
@@ -456,14 +452,12 @@ def _form_batch(project_id: str, data: dict = None):
     form = Form(
         H2("Batch Processing from CSV"),
         hx_post=validate_csv.to(),
-        # hx_target="#table-from-csv",
         hx_trigger="input[event.target.matches('input[type=\"file\"]')] from:body",
         hx_encoding="multipart/form-data",
         hx_swap="outerHTML",
     )(
         Section(
             Input(type="file", name="csv_file", accept=".csv", value=None),
-            # Div(id="table-from-csv")(table),
         ),
         Section(id="table-from-csv")(table, input_data),
         Section(cls="row")(
@@ -487,12 +481,11 @@ def _form_batch(project_id: str, data: dict = None):
 def _parse_tqdm_log(file_path: str) -> str:
     output_lines = ["\n"]
     try:
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             for line in f:
                 last = output_lines[-1]
-                if line == "\n":
-                    if "\x1b[A\n" in last:
-                        continue
+                if line == "\n" and "\x1b[A\n" in last:
+                    continue
                 if ("\x1b[A\n" in line) & ("\x1b[A\n" in last):
                     output_lines[-1] = line
                     continue
@@ -532,8 +525,8 @@ def _task_log(alignment_task_id: str):
             pp = pp.relative_to(PUBLIC_DIR)
             img.append(Figure(A(Img(src=f"/{pp}"), href=f"/{pp}"), Figcaption(pp.name)))
 
-    aria_busy: bool = True if is_running else False
-    detail_open: bool = True if is_running else False
+    aria_busy: bool = bool(is_running)
+    detail_open: bool = bool(is_running)
     hx_kwargs = {}
     if is_running:
         # timed refresh the app for log update
@@ -604,7 +597,8 @@ def _submitted_modal(data, mode, task_links):
     import copy
 
     # FIXME the modal should trigger manage_task!
-    assert mode in ["pair", "batch"]
+    if mode not in ("pair", "batch"):
+        raise ValueError(f"mode must be 'pair' or 'batch', got '{mode}'")
     project_id = data["project_id"]
 
     pairs = [copy.deepcopy(ll[0]) for ll in task_links]
@@ -644,7 +638,11 @@ def _submitted_modal(data, mode, task_links):
 #                                    routes                                    #
 # ---------------------------------------------------------------------------- #
 @rt("/project/{project_id}/task/{alignment_task_id}")
-def get_task(project_id: str = None, alignment_task_id: str = None, data: dict = None):
+def get_task(
+    project_id: str | None = None,
+    alignment_task_id: str | None = None,
+    data: dict | None = None,
+):
     if (alignment_task_id is None) or (alignment_task_id == ""):
         return _app_layout(
             nav=_nav(project_id=project_id),
@@ -673,7 +671,7 @@ def get_task(project_id: str = None, alignment_task_id: str = None, data: dict =
 
 
 @rt("/project/{project_id}")
-def get_project(project_id: str = None):
+def get_project(project_id: str | None = None):
     if (project_id is None) or (project_id == ""):
         return _app_layout(
             nav=_nav(None),
@@ -708,8 +706,9 @@ def post_project(project_id: str, name: str, description: str):
 
 
 @rt
-def index(project_id: str = None, alignment_task_id: str = None):
-    text = open(PUBLIC_DIR / "TUTORIAL.md", encoding="utf-8").read()
+def index(project_id: str | None = None, alignment_task_id: str | None = None):
+    with open(PUBLIC_DIR / "TUTORIAL.md", encoding="utf-8") as f:
+        text = f.read()
     main = Div(text, cls="marked")
     if (project_id is None) and (alignment_task_id is None):
         return _app_layout(nav=_nav(), main=main, side="")
@@ -728,7 +727,7 @@ async def validate_csv(data: dict):
         # NOTE: no value to None
         row = {kk: None if vv == "" else vv for kk, vv in row.items()}
         task = {"row_num": ii}
-        for kk in inspect.get_annotations(DefaultTask).keys():
+        for kk in inspect.get_annotations(DefaultTask):
             tk = kk.replace("_", "-")
             if tk in row:
                 task.update({kk: row[tk]})
@@ -802,7 +801,7 @@ def delete_project(project_id: str):
 
 
 @rt
-def init_delete_project(project_id: str = None):
+def init_delete_project(project_id: str | None = None):
     return Dialog(
         aria_busy="true",
         open=True,
@@ -819,11 +818,10 @@ def check_omero_connection():
 
 
 # -------------------------------- task queue -------------------------------- #
-def query_tasks(project_id: str = None, max_runtime: float = None):
+def query_tasks(project_id: str | None = None, max_runtime: float | None = None):
     """return (<tasks that are not launched>, <tasks currently running>)"""
-    MAX_RUNTIME = 10 * 60
     if max_runtime is None:
-        max_runtime = MAX_RUNTIME
+        max_runtime = MAX_TASK_RUNTIME_SECONDS
 
     projects = t_project(order_by="created_at")[::-1]
     if project_id in t_project:
@@ -880,7 +878,6 @@ def launch_task(task: AlignmentTask):
             continue
         cmd.extend([cli_key, str(cli_value)])
     cmd.extend(["--qc-out-dir", qc_dir])
-    # pprint.pprint(cmd)
 
     task.process_start_at = datetime.now().isoformat()
     t_alignment_task.update(task)
@@ -904,7 +901,7 @@ def launch_task(task: AlignmentTask):
 
 
 @rt
-def manage_task(project_id: str = None):
+def manage_task(project_id: str | None = None):
     tasks, runnings = query_tasks(project_id)
     updates = broadcast_alignment_task_status()
     manager = Div(
@@ -938,8 +935,8 @@ def broadcast_alignment_task_status():
 
 
 def run():
-    import os
     import argparse
+    import os
 
     parser = argparse.ArgumentParser(description="Launch palomero web-app")
     parser.add_argument(
@@ -953,6 +950,3 @@ def run():
     curr = pathlib.Path(__file__).parent
     os.chdir(curr)
     serve(appname="palomero.web.app", host="localhost", port=args.port, reload=True)
-
-
-# serve()

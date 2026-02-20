@@ -1,8 +1,10 @@
 """Core data structures for the Palomero application."""
 
+from __future__ import annotations
+
 import dataclasses
+
 import numpy as np
-from typing import Optional
 
 
 @dataclasses.dataclass
@@ -22,9 +24,9 @@ class AlignmentTask:
     dry_run: bool
     only_affine: bool
     sample_size_factor: float
-    mask_roi_id_from: Optional[int] = None
-    mask_roi_id_to: Optional[int] = None
-    row_num: Optional[int] = None  # For batch mode context
+    mask_roi_id_from: int | None = None
+    mask_roi_id_to: int | None = None
+    row_num: int | None = None  # For batch mode context
 
 
 @dataclasses.dataclass
@@ -35,7 +37,7 @@ class AlignmentResult:
     image_id_to: int
     success: bool
     message: str
-    qc_plot_path: Optional[str] = None
-    affine_matrix: Optional[np.ndarray] = None
-    rois_mapped: Optional[int] = None
-    row_num: Optional[int] = None
+    qc_plot_path: str | None = None
+    affine_matrix: np.ndarray | None = None
+    rois_mapped: int | None = None
+    row_num: int | None = None
