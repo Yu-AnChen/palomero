@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pathlib
 
 import cv2
@@ -44,9 +46,12 @@ class LocalPalomeroAligner:
 
         out_path = pathlib.Path(out_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        assert "".join(out_path.suffixes[-2:]) in (".ome.tif", ".ome.tiff")
+        if "".join(out_path.suffixes[-2:]) not in (".ome.tif", ".ome.tiff"):
+            raise ValueError(
+                f"Output path must end with .ome.tif or .ome.tiff, got '{out_path}'"
+            )
 
-    def run(self):
+    def run(self) -> None:
         """Executes the entire alignment and warping workflow."""
         print("1. Reading and preparing images...")
         self._prepare_readers()
@@ -62,7 +67,7 @@ class LocalPalomeroAligner:
 
         print(f"\nWorkflow finished. Warped image saved to '{self.out_path}'")
 
-    def _prepare_readers(self):
+    def _prepare_readers(self) -> None:
         """Creates and configures palom readers for local images."""
 
         self.base_reader_from = align_he.get_reader(self.path_from)(self.path_from)
@@ -117,7 +122,7 @@ class LocalPalomeroAligner:
             dask_reader.pyramid = dask_reader.pyramid[:1]
         return dask_reader
 
-    def _align_images(self):
+    def _align_images(self) -> None:
         """Runs the core alignment algorithm."""
         strategy = ElastixAligner(self.task)
         self.affine_result, self.elastix_result = strategy.align(
@@ -126,7 +131,7 @@ class LocalPalomeroAligner:
             plot=True,
         )
 
-    def _generate_qc_plots(self):
+    def _generate_qc_plots(self) -> None:
         """Generates and saves QC plots for the alignment."""
         plotter = QcPlotter(self.task)
         # The OmeroRoiAligner's _get_viz_img is a convenient helper
@@ -157,7 +162,7 @@ class LocalPalomeroAligner:
         plotter.save_figures()
         print(f"QC plots saved in '{self.task.qc_out_dir}'.")
 
-    def _warp_and_save_image(self, _level=0):
+    def _warp_and_save_image(self, _level: int = 0) -> None:
         """Warps the moving image and saves it as a pyramidal OME-TIFF."""
 
         r1, r2 = self.base_reader_from, self.base_reader_to
@@ -247,11 +252,22 @@ class LocalPalomeroAligner:
         )
 
 
-def _wrap_cv2_large_proper(mapping_yx, img, mx, cval, sigma=0, module="cv2"):
-    assert module in ["cv2", "skimage"]
-    assert mx.shape == (3, 3)
-    assert mapping_yx.ndim == 3
-    assert mapping_yx.shape[0] == 2, mapping_yx.shape
+def _wrap_cv2_large_proper(
+    mapping_yx: np.ndarray,
+    img: np.ndarray,
+    mx: np.ndarray,
+    cval: float,
+    sigma: int = 0,
+    module: str = "cv2",
+) -> np.ndarray:
+    if module not in ("cv2", "skimage"):
+        raise ValueError(f"module must be 'cv2' or 'skimage', got '{module}'")
+    if mx.shape != (3, 3):
+        raise ValueError(f"mx must have shape (3, 3), got {mx.shape}")
+    if mapping_yx.ndim != 3 or mapping_yx.shape[0] != 2:
+        raise ValueError(
+            f"mapping_yx must have shape (2, H, W), got {mapping_yx.shape}"
+        )
 
     _, H, W = mapping_yx.shape
 
@@ -310,7 +326,7 @@ def _wrap_cv2_large_proper(mapping_yx, img, mx, cval, sigma=0, module="cv2"):
     ).astype(crop_img.dtype)
 
 
-def elastix_param_to_dform(param_obj):
+def elastix_param_to_dform(param_obj: object) -> np.ndarray:
     import itk
 
     shape = param_obj.GetParameterMap(0).get("Size")[::-1]
@@ -322,7 +338,7 @@ def elastix_param_to_dform(param_obj):
     return np.moveaxis(deformation_field, 2, 0)
 
 
-def parse_lsp_id(name):
+def parse_lsp_id(name: object) -> str | None:
     import re
 
     name = str(name)

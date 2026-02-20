@@ -1,8 +1,9 @@
 """Wraps Palom for coarse alignment."""
 
+from __future__ import annotations
+
 import itertools
 import logging
-from typing import List, Optional
 
 import cv2
 import dask.array as da
@@ -13,6 +14,7 @@ from ezomero.rois import ezShape
 from palom.reader import DaPyramidChannelReader
 
 from .. import omero_handler, transform_roi_points
+from ..constants import DEFAULT_PIXEL_SIZE
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +24,7 @@ class PalomReaderFactory:
 
     @staticmethod
     def _create_mask_from_shapes(
-        shapes: List[ezShape], output_shape: tuple, downscale: float
+        shapes: list[ezShape], output_shape: tuple, downscale: float
     ) -> np.ndarray:
         """Creates a binary mask from a list of ezShapes."""
         mask = np.zeros(output_shape, dtype=np.uint8)
@@ -54,7 +56,7 @@ class PalomReaderFactory:
         handler: omero_handler.ImageHandler,
         channel: int,
         max_pixel_size: float,
-        mask_roi_id: Optional[int] = None,
+        mask_roi_id: int | None = None,
     ) -> DaPyramidChannelReader:
         """Creates a Palom DaPyramidChannelReader for a specific channel."""
         if not handler.is_valid():
@@ -113,14 +115,6 @@ class PalomReaderFactory:
             img = pyramid[-1][0]
             pyramid.append(palom.img_util.cv2_downscale_local_mean(img, 2)[np.newaxis])
 
-        def level_downsamples(self):
-            heights = [ss.shape[1] for ss in self.pyramid]
-            heights.insert(0, heights[0])
-            downsamples = [(h1 / h2) for h1, h2 in itertools.pairwise(heights)]
-            return dict(enumerate(itertools.accumulate(downsamples, func=np.multiply)))
-
-        palom.reader.DaPyramidChannelReader.level_downsamples = level_downsamples
-
         log.info(
             f"Creating Palom reader with {len(pyramid)} levels for image {handler.image_id}."
         )
@@ -129,14 +123,20 @@ class PalomReaderFactory:
         # `DaPyramidChannelReader` auto generate other pyramid levels until
         # level shape < 1024 - we do not want this behavior here
         reader.pyramid = pyramid
-        reader.level_downsamples = reader.level_downsamples()
+        # Compute level_downsamples directly (avoid monkey-patching the class)
+        heights = [ss.shape[1] for ss in pyramid]
+        heights.insert(0, heights[0])
+        downsamples = [(h1 / h2) for h1, h2 in itertools.pairwise(heights)]
+        reader.level_downsamples = dict(
+            enumerate(itertools.accumulate(downsamples, func=np.multiply))
+        )
 
         base_pixel_size = handler.base_pixel_size
         if base_pixel_size is None:
             log.warning(
                 f"Using default pixel size 1.0 for Palom reader for image {handler.image_id}"
             )
-            base_pixel_size = 1.0
+            base_pixel_size = DEFAULT_PIXEL_SIZE
         reader.pixel_size = base_pixel_size
         reader.path = handler.image_name
         reader.omero_metadata = {
@@ -179,14 +179,14 @@ def run_coarse_alignment(
 
 
 def search_then_register(
-    img_left,
-    img_right,
-    max_size=2000,
-    n_keypoints=5000,
-    auto_mask=True,
-    plot_match_result=True,
-    search_kwargs=None,
-):
+    img_left: np.ndarray,
+    img_right: np.ndarray,
+    max_size: int = 2000,
+    n_keypoints: int = 5000,
+    auto_mask: bool = True,
+    plot_match_result: bool = True,
+    search_kwargs: dict | None = None,
+) -> tuple[np.ndarray, tuple]:
     from palom import img_util, register, register_util
     from palom.reader import logger
     from palom.register_dev import match_img_with_config, search_best_match_config

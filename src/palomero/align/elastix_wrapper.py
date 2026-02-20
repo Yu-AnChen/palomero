@@ -1,25 +1,42 @@
 """Wraps ITK Elastix for non-rigid alignment."""
 
+from __future__ import annotations
+
 import itk
 import numpy as np
-import skimage.transform
-import skimage.util
+
+from ..constants import (
+    DEFAULT_GRID_SIZE,
+    DEFAULT_NUMBER_OF_ITERATIONS,
+    DEFAULT_SAMPLE_PIXELS,
+    DEFAULT_SAMPLE_REGION_SIZE,
+)
 
 
-def map_moving_points(points_xy, param_obj):
+def map_moving_points(
+    points_xy: np.ndarray, param_obj: itk.ParameterObject
+) -> np.ndarray:
     return _map_points(points_xy, param_obj, is_from_moving=True)
 
 
-def map_fixed_points(points_xy, param_obj):
+def map_fixed_points(
+    points_xy: np.ndarray, param_obj: itk.ParameterObject
+) -> np.ndarray:
     return _map_points(points_xy, param_obj, is_from_moving=False)
 
 
-def _map_points(points_xy, param_obj, is_from_moving=True):
+def _map_points(
+    points_xy: np.ndarray,
+    param_obj: itk.ParameterObject,
+    is_from_moving: bool = True,
+) -> np.ndarray:
     import scipy.ndimage as ndi
 
     points = np.asarray(points_xy)
-    assert points.shape[1] == 2
-    assert points.ndim == 2
+    if points.ndim != 2 or points.shape[1] != 2:
+        raise ValueError(
+            f"points_xy must be a 2D array with shape (N, 2), got shape {points.shape}"
+        )
 
     shape = param_obj.GetParameterMap(0).get("Size")[::-1]
     shape = np.array(shape, dtype="int")
@@ -49,11 +66,11 @@ def _map_points(points_xy, param_obj, is_from_moving=True):
 
 
 def get_default_crc_params(
-    grid_size: float = 80.0,
-    sample_region_size: float = 300.0,
-    sample_number_of_pixels: int = 4_000,
-    number_of_iterations: int = 1_000,
-):
+    grid_size: float = DEFAULT_GRID_SIZE,
+    sample_region_size: float = DEFAULT_SAMPLE_REGION_SIZE,
+    sample_number_of_pixels: int = DEFAULT_SAMPLE_PIXELS,
+    number_of_iterations: int = DEFAULT_NUMBER_OF_ITERATIONS,
+) -> dict:
     parameter_object = itk.ParameterObject.New()
     p = parameter_object.GetDefaultParameterMap("bspline")
 
@@ -84,8 +101,13 @@ def get_default_crc_params(
 
 
 def run_non_rigid_alignment(
-    ref, moving, setting, ref_mask=None, moving_mask=None, log=False
-):
+    ref: np.ndarray,
+    moving: np.ndarray,
+    setting: dict | None,
+    ref_mask: np.ndarray | None = None,
+    moving_mask: np.ndarray | None = None,
+    log: bool = False,
+) -> tuple[np.ndarray, itk.ParameterObject, itk.ParameterObject]:
     import pathlib
     import tempfile
 
@@ -116,15 +138,13 @@ def run_non_rigid_alignment(
                 log_file_name=log_filename,
                 output_directory=log_dir,
             )
-        except RuntimeError:
+        except RuntimeError as err:
             log_content = log_file.read()
             msg = ""
             if "itk::ExceptionObject" in log_content:
                 msg = log_content[log_content.index("itk::ExceptionObject") :]
             raise RuntimeError(
                 f"Elastix registration failed with the following error\n\n{msg}"
-            )
-        except Exception as e:
-            raise e
+            ) from err
 
     return warpped_moving, transform_parameter, elastix_parameter

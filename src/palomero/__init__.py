@@ -1,7 +1,5 @@
-from importlib.metadata import version, PackageNotFoundError
+import contextlib
+from importlib.metadata import PackageNotFoundError, version
 
-try:
+with contextlib.suppress(PackageNotFoundError):
     __version__ = version("palomero")
-except PackageNotFoundError:
-    # package is not installed
-    pass

@@ -1,13 +1,16 @@
 """Functions for transforming ROI points."""
 
-import math
 import dataclasses
+import math
+
 import ezomero.rois
 import numpy as np
 import skimage.transform
 
+from .constants import ELLIPSE_NUM_POINTS
 
-def ellipse_perimeter_ramanujan(a, b):
+
+def ellipse_perimeter_ramanujan(a: float, b: float) -> float:
     """
     Calculates the perimeter of an ellipse using Ramanujan's approximation.
 
@@ -21,7 +24,7 @@ def ellipse_perimeter_ramanujan(a, b):
     return math.pi * (3 * (a + b) - math.sqrt((3 * a + b) * (a + 3 * b)))
 
 
-def _tform_mx(transform) -> np.ndarray:
+def _tform_mx(transform: ezomero.rois.AffineTransform) -> np.ndarray:
     """Converts ezomero.rois' transform property to a 3x3 numpy matrix."""
     return np.array(
         [
@@ -32,15 +35,17 @@ def _tform_mx(transform) -> np.ndarray:
     )
 
 
-def simplify_ellipse(x_center, y_center, x_rad, y_rad):
+def simplify_ellipse(
+    x_center: float, y_center: float, x_rad: float, y_rad: float
+) -> np.ndarray:
     theta = 0
-    t = np.linspace(0, 2 * np.pi, 100)
+    t = np.linspace(0, 2 * np.pi, ELLIPSE_NUM_POINTS)
     x = x_rad * np.cos(t) * np.cos(theta) - y_rad * np.sin(t) * np.sin(theta) + x_center
     y = x_rad * np.cos(t) * np.sin(theta) + y_rad * np.sin(t) * np.cos(theta) + y_center
     return np.array([x, y]).T
 
 
-def get_roi_points(roi):
+def get_roi_points(roi: ezomero.rois.ezShape) -> np.ndarray:
     roi_classes = (
         ezomero.rois.Ellipse,
         ezomero.rois.Label,
@@ -50,7 +55,8 @@ def get_roi_points(roi):
         ezomero.rois.Polyline,
         ezomero.rois.Rectangle,
     )
-    assert isinstance(roi, roi_classes)
+    if not isinstance(roi, roi_classes):
+        raise TypeError(f"Expected an ezomero ROI shape, got {type(roi).__name__}")
 
     if isinstance(roi, ezomero.rois.Ellipse):
         coords = simplify_ellipse(roi.x, roi.y, roi.x_rad, roi.y_rad)
@@ -76,7 +82,9 @@ def get_roi_points(roi):
     return coords
 
 
-def set_roi_points(roi, coords):
+def set_roi_points(
+    roi: ezomero.rois.ezShape, coords: np.ndarray
+) -> ezomero.rois.ezShape:
     roi_classes = (
         ezomero.rois.Ellipse,
         ezomero.rois.Label,
@@ -86,7 +94,8 @@ def set_roi_points(roi, coords):
         ezomero.rois.Polyline,
         ezomero.rois.Rectangle,
     )
-    assert isinstance(roi, roi_classes)
+    if not isinstance(roi, roi_classes):
+        raise TypeError(f"Expected an ezomero ROI shape, got {type(roi).__name__}")
 
     common_keys = set.intersection(
         *[{ff.name for ff in dataclasses.fields(cc)} for cc in roi_classes]
