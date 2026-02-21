@@ -540,6 +540,14 @@ def _task_log(alignment_task_id: str):
             hx_preserve=True,
         )
 
+    if len(img):
+        img = [
+            Details(
+                Summary("QC Images", role="button", cls="secondary outline"),
+                *img,
+                open=not detail_open,
+            )
+        ]
     return Details(
         Summary(
             "Log",
