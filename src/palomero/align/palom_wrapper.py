@@ -85,6 +85,7 @@ class PalomReaderFactory:
                 f"Could not fetch image data for reader creation: {e}"
             ) from e
 
+        roi_mask = np.full(img.shape, fill_value=True, dtype="bool")
         if mask_roi_id is not None:
             log.info(
                 f"Applying mask from ROI {mask_roi_id} to image {handler.image_id}"
@@ -101,6 +102,7 @@ class PalomReaderFactory:
                     log.info(
                         f"Successfully applied mask from ROI {mask_roi_id} (fill value {fill_value})"
                     )
+                    roi_mask = mask
                 else:
                     log.warning(f"ROI {mask_roi_id} contains no shapes to mask.")
             except Exception as e:
@@ -123,9 +125,13 @@ class PalomReaderFactory:
 
         tip_pixel_size = pyramid_config["level_pixel_sizes"][level]
         while tip_pixel_size < max_pixel_size / 2:
-            tip_pixel_size *= 2
+            D_FACTOR = 2
+            tip_pixel_size *= D_FACTOR
             img = pyramid[-1][0]
-            pyramid.append(palom.img_util.cv2_downscale_local_mean(img, 2)[np.newaxis])
+            pyramid.append(
+                palom.img_util.cv2_downscale_local_mean(img, D_FACTOR)[np.newaxis]
+            )
+            roi_mask = roi_mask[::D_FACTOR, ::D_FACTOR]
 
         log.info(
             f"Creating Palom reader with {len(pyramid)} levels for image {handler.image_id}."
@@ -155,6 +161,7 @@ class PalomReaderFactory:
             "channel": channel,
             "mask_roi_id": mask_roi_id,
         }
+        reader.roi_mask = roi_mask
         return reader
 
 

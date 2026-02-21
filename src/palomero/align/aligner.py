@@ -34,6 +34,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class AffineResult:
     ref_img: np.ndarray
+    ref_mask: np.ndarray
     affine_moving_img: np.ndarray
     affine_moving_mask: np.ndarray
     affine_matrix: np.ndarray
@@ -82,7 +83,7 @@ class AffineAligner(AlignmentStrategy):
 
         # warp `moving` image to `ref` image's space
         warped_moving_mask = skimage.transform.warp(
-            np.full(thumbnail_moving.shape, fill_value=True, dtype="bool"),
+            reader_moving.roi_mask,
             tform.inverse,
             output_shape=thumbnail_ref.shape,
             cval=False,
@@ -103,6 +104,9 @@ class AffineAligner(AlignmentStrategy):
                 dst=warped_moving_mask,
             )
 
+        ref_mask = reader_ref.roi_mask & warped_moving_mask.astype("bool")
+        ref_mask = ref_mask.astype("uint8")
+
         adjust_which, scalar, _ = intensity_config
         mask = warped_moving_mask.astype("bool")
         ref, warped_moving = palom.register_dev.match_img_with_config(
@@ -111,6 +115,7 @@ class AffineAligner(AlignmentStrategy):
 
         return AffineResult(
             ref_img=ref,
+            ref_mask=ref_mask,
             affine_moving_img=warped_moving,
             affine_moving_mask=warped_moving_mask,
             affine_matrix=affine_matrix,
@@ -133,12 +138,14 @@ class ElastixAligner(AlignmentStrategy):
 
         ref = affine_result.ref_img
         affine_moving = affine_result.affine_moving_img
-        affine_moving_mask = affine_result.affine_moving_mask
+
+        moving_mask = affine_result.affine_moving_mask
+        ref_mask = affine_result.ref_mask
 
         # It appears that larger sample size (smaller sample size factor) is
         # useful when the tissue area is small relative to the imaging region.
         # While smaller sample_size works in "common" scenario.
-        sample_size = int(np.sqrt(affine_moving_mask.sum()) / sample_size_factor)
+        sample_size = int(np.sqrt(moving_mask.sum()) / sample_size_factor)
         if sample_size >= np.min(ref.shape):
             auto_sample_size = np.min(ref.shape) - 1
             log.info(
@@ -159,8 +166,8 @@ class ElastixAligner(AlignmentStrategy):
                     "sample_number_of_pixels": min(n_pxs, MAX_SAMPLE_PIXELS),
                     "grid_size": DEFAULT_GRID_SIZE,
                 },
-                moving_mask=affine_moving_mask,
-                ref_mask=affine_moving_mask,
+                moving_mask=moving_mask,
+                ref_mask=ref_mask,
                 log=False,
             )
         except RuntimeError as e:
