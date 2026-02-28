@@ -16,7 +16,8 @@ It uses a robust, two-step alignment process:
 - **Single Pair & Batch Processing**: Align a single pair of images using their
   OMERO IDs, or process many pairs in sequence from a CSV file.
 - **ROI Transfer**: Maps all ROI types (polygons, points, lines, etc.) from a
-  source image to a target image after alignment.
+  source image to a target image after alignment. Automatically handles GeoMx
+  instrument ROIs (see [GeoMx ROI handling](#geomx-roi-handling)).
 - **Quality Control (QC) Plots**: Automatically generates JPEG images to
   visually inspect the quality of the alignment at each stage (coarse,
   non-rigid, and ROI mapping).
@@ -209,3 +210,25 @@ Here are some of the most important arguments. For a full list, run `palomero
 - **OMERO**: If `--map-rois` is used (and not `--dry-run`), new ROIs
   corresponding to the transformed shapes from the second image will be created
   on 'to' image.
+
+## GeoMx ROI Handling
+
+ROIs exported from a GeoMx instrument contain multiple shapes per ROI object:
+
+- A **geometry** (ellipse, polygon, rectangle, …) — the actual region of interest, with no text label.
+- A **Label** shape — carries a zero-padded 3-digit number that identifies the ROI (e.g. `009`).
+- One or more **binary mask** shapes — not supported by `ezomero`, but their text value (e.g. `Full ROI`) is still readable from the raw OMERO object.
+
+When Palomero detects this pattern (a 3-digit Label paired with a geometry in the same ROI object), it automatically collapses all three into a single output shape: the geometry is kept and its label is set to:
+
+```text
+{3-digit} | {mask-label-1} | {mask-label-2} | …
+```
+
+For example, an ROI with digit label `009` and one mask labelled `Full ROI` produces:
+
+```text
+009 | Full ROI
+```
+
+This detection is automatic — no extra flags are needed. Non-GeoMx ROIs are processed normally.

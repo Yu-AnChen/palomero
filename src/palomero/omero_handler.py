@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import logging
+import re
 from functools import cached_property
 from typing import Any
 
@@ -422,25 +423,72 @@ def _tform_mx(transform: omero.model.AffineTransformI) -> np.ndarray:
 
 
 def _get_shapes_from_rois(conn: BlitzGateway, roi_ids: list[int]) -> list[ezShape]:
-    """Fetches all shapes from a list of OMERO ROI IDs."""
+    """Fetches shapes from a list of OMERO ROI IDs.
+
+    For each ROI, auto-detects the GeoMx pattern: a 3-digit Label shape paired
+    with a geometry (Ellipse, Polygon, Rectangle, ...). If detected, the ROI is
+    collapsed to the geometry with a combined label
+    ``"{3-digit} | {mask-label-1} | ..."``. Otherwise all successfully fetched
+    shapes are returned as-is.
+    """
     shapes: list[ezShape] = []
     if not roi_ids:
         return shapes
 
     for r_id in tqdm.tqdm(roi_ids, desc="Downloading Shapes", unit="ROI"):
         try:
-            shape_ids = ezomero.get_shape_ids(conn, r_id)
-            if not shape_ids:
-                continue
-            for s_id in shape_ids:
-                try:
-                    shape = ezomero.get_shape(conn, s_id)
-                    if shape:
-                        shapes.append(shape)
-                except Exception as e:
-                    log.warning(f"Could not get shape ID {s_id} from ROI {r_id}: {e}")
+            shape_ids = sorted(ezomero.get_shape_ids(conn, r_id))
         except Exception as e:
             log.warning(f"Could not get shape IDs from ROI {r_id}: {e}")
+            continue
+
+        if not shape_ids:
+            continue
+
+        # Per-shape fetch: (s_id, shape_or_None, exc_or_None, textValue_or_None)
+        collected: list[tuple] = []
+        for s_id in sorted(shape_ids):
+            try:
+                collected.append((s_id, ezomero.get_shape(conn, s_id), None, None))
+            except Exception as exc:
+                raw = conn.getObject("Shape", s_id)
+                tv = None
+                if raw is not None and raw.textValue is not None:
+                    tv = str(raw.textValue)
+                collected.append((s_id, None, exc, tv))
+
+        # Detect GeoMx pattern: an ROI with a 3-digit Label AND a geometry shape
+        geometry = None
+        digit_label = None
+        mask_labels = []
+        for _, shape, exc, tv in collected:
+            if exc is not None:
+                if tv:
+                    mask_labels.append(tv)
+            elif shape is None:
+                continue
+            elif isinstance(shape, ezomero.rois.Label):
+                if shape.label and re.match(r"^\d{3}$", shape.label):
+                    digit_label = shape.label
+            else:
+                geometry = shape
+
+        if digit_label is not None and geometry is not None:
+            # GeoMx ROI: collapse to geometry with combined label
+            parts = [digit_label, *mask_labels]
+            shapes.append(
+                dataclasses.replace(
+                    geometry, label=" | ".join(parts) if parts else None
+                )
+            )
+        else:
+            # Regular ROI: return every successfully fetched shape
+            for s_id, shape, exc, _ in collected:
+                if shape is not None:
+                    shapes.append(shape)
+                elif exc is not None:
+                    log.warning(f"Could not get shape ID {s_id} from ROI {r_id}: {exc}")
+
     return shapes
 
 
