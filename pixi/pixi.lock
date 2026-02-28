@@ -88,7 +88,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/72/2d/b17d611c4058cb359931c04e009d576ec228cce10fe042655981b73b7fe7/openslide_python-1.4.3-cp310-cp310-manylinux1_x86_64.manylinux_2_5_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/b9/c538f279a4e237a006a2c98387d081e9eb060d203d8ed34467cc0f0b9b53/packaging-26.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d2/94/d035497be262d921d1d18aef6dc00f308431fe969a18cae8f6fc154b76da/palom-2025.7.1-py3-none-any.whl
-      - pypi: git+https://github.com/Yu-AnChen/palomero.git#44433dee5b8ce464dbdc21ed0d62ab1815e14bfd
+      - pypi: git+https://github.com/Yu-AnChen/palomero.git#452e93c066191bc5aaf88aca8980a166ad18e073
       - pypi: https://files.pythonhosted.org/packages/71/e7/40fb618334dcdf7c5a316c0e7343c5cd82d3d866edc100d98e29bc945ecd/partd-1.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0c/7b/f9b09a7804ec7336effb96c26d37c29d27225783dc1501b7d62dcef6ae25/pillow-12.1.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/16/bd2f5904557265882108dc2e04f18abc05ab0c2b7082ae9430091daf1d5c/Pint-0.24.4-py3-none-any.whl
@@ -200,7 +200,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/59/dc/56cfcc66ed846646d09afe7f8c70e76f2e7df008b3e3193e10673d4161a6/openslide_python-1.4.3-cp310-cp310-macosx_10_9_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/b7/b9/c538f279a4e237a006a2c98387d081e9eb060d203d8ed34467cc0f0b9b53/packaging-26.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d2/94/d035497be262d921d1d18aef6dc00f308431fe969a18cae8f6fc154b76da/palom-2025.7.1-py3-none-any.whl
-      - pypi: git+https://github.com/Yu-AnChen/palomero.git#44433dee5b8ce464dbdc21ed0d62ab1815e14bfd
+      - pypi: git+https://github.com/Yu-AnChen/palomero.git#452e93c066191bc5aaf88aca8980a166ad18e073
       - pypi: https://files.pythonhosted.org/packages/71/e7/40fb618334dcdf7c5a316c0e7343c5cd82d3d866edc100d98e29bc945ecd/partd-1.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/bd/c1/aab9e8f3eeb4490180e357955e15c2ef74b31f64790ff356c06fb6cf6d84/pillow-12.1.1-cp310-cp310-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/16/bd2f5904557265882108dc2e04f18abc05ab0c2b7082ae9430091daf1d5c/Pint-0.24.4-py3-none-any.whl
@@ -314,7 +314,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/06/98/da4efa53c5f8cf208ea14461b37b417a30318e5d2b2b3930a6aa2ad6fe67/openslide_python-1.4.3-cp310-cp310-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/b9/c538f279a4e237a006a2c98387d081e9eb060d203d8ed34467cc0f0b9b53/packaging-26.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d2/94/d035497be262d921d1d18aef6dc00f308431fe969a18cae8f6fc154b76da/palom-2025.7.1-py3-none-any.whl
-      - pypi: git+https://github.com/Yu-AnChen/palomero.git#44433dee5b8ce464dbdc21ed0d62ab1815e14bfd
+      - pypi: git+https://github.com/Yu-AnChen/palomero.git#452e93c066191bc5aaf88aca8980a166ad18e073
       - pypi: https://files.pythonhosted.org/packages/71/e7/40fb618334dcdf7c5a316c0e7343c5cd82d3d866edc100d98e29bc945ecd/partd-1.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f8/f9/9f6b01c0881d7036063aa6612ef04c0e2cad96be21325a1e92d0203f8e91/pillow-12.1.1-cp310-cp310-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/16/bd2f5904557265882108dc2e04f18abc05ab0c2b7082ae9430091daf1d5c/Pint-0.24.4-py3-none-any.whl
@@ -2074,7 +2074,7 @@ packages:
   - yamale>=4,<5
   - zarr>=2.17,<3
   requires_python: '>=3.10'
-- pypi: git+https://github.com/Yu-AnChen/palomero.git#44433dee5b8ce464dbdc21ed0d62ab1815e14bfd
+- pypi: git+https://github.com/Yu-AnChen/palomero.git#452e93c066191bc5aaf88aca8980a166ad18e073
   name: palomero
   version: 2026.2.1
   requires_dist:
