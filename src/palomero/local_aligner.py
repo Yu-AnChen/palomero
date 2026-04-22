@@ -104,6 +104,7 @@ class LocalPalomeroAligner:
         ]
         pyramid[level] = da.from_array(img[np.newaxis], chunks=(1, 1024, 1024))
 
+        roi_mask = np.ones(img.shape, dtype=bool)
         tip_pixel_size = level_pixel_sizes[level]
         while tip_pixel_size < max_pixel_size / 2:
             tip_pixel_size *= 2
@@ -114,10 +115,12 @@ class LocalPalomeroAligner:
             pyramid.append(
                 da.from_array(downsampled_img[np.newaxis], chunks=(1, 1024, 1024))
             )
+            roi_mask = roi_mask[::2, ::2]
 
         dask_reader = DaPyramidChannelReader(pyramid, channel_axis=0)
         dask_reader.pixel_size = base_reader.pixel_size
         dask_reader.path = base_reader.path
+        dask_reader.roi_mask = roi_mask
         if level == 0:
             dask_reader.pyramid = dask_reader.pyramid[:1]
         return dask_reader
