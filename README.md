@@ -30,61 +30,44 @@ It uses a robust, two-step alignment process:
 
 ## Installation
 
-1. **Conda Environment (Recommended):** Using Miniconda or Anaconda is
-    recommended for managing dependencies.
+[Pixi](https://pixi.sh) is the recommended way to install Palomero. It
+automatically selects the correct platform-specific dependencies (including
+ZeroC Ice) for Windows, macOS, and Linux.
+
+1. **Download the environment files** into a new directory:
 
     ```bash
-    # Create a Conda environment (e.g., named "palomero_env")
-    conda create -n palomero_env -c conda-forge python=3.10 pip
+    mkdir palomero-env && cd palomero-env
 
-    # Activate the environment
-    conda activate palomero_env
+    curl -OL https://raw.githubusercontent.com/Yu-AnChen/palomero/refs/heads/main/pixi/pixi.toml
+    curl -OL https://raw.githubusercontent.com/Yu-AnChen/palomero/refs/heads/main/pixi/pixi.lock
     ```
 
-2. **Install ZeroC Ice:**
-
-    `omero-py` depends on ZeroC Ice. Use pip to install the the correct wheel
-    for your OS and Python version from [Glencoe software's
-    GitHub](https://github.com/glencoesoftware/). Search for "zeroc" for the
-    repos.
-
-    *Example for Windows Python 3.10:*
+2. **Install the environment:**
 
     ```bash
-    python -m pip install https://github.com/glencoesoftware/zeroc-ice-py-win-x86_64/releases/download/20240325/zeroc_ice-3.6.5-cp310-cp310-win_amd64.whl
+    pixi install --locked
     ```
 
-    *Example for macOS Python 3.10:*
+    > **Windows:** If git is not installed on your system, run this instead —
+    > it temporarily installs git, runs the install, then removes it:
+    >
+    > ```bash
+    > pixi global install git && pixi install --locked && pixi global remove git
+    > ```
+
+3. **Activate the environment:**
 
     ```bash
-    python -m pip install https://github.com/glencoesoftware/zeroc-ice-py-macos-universal2/releases/download/20240131/zeroc_ice-3.6.5-cp310-cp310-macosx_11_0_universal2.whl
+    pixi shell
     ```
 
-    *Example for Linux Python 3.10:*
-
-    ```bash
-    python -m pip install https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp310-cp310-manylinux_2_28_x86_64.whl
-    ```
-
-3. **Install palomero:**
-
-    ```bash
-    python -m pip install "palomero @ git+https://github.com/yu-anchen/palomero@main"
-    ```
+The pixi installation includes the web app dependencies. See
+[Running the Web App](#running-the-web-app) below.
 
 ## Web App (Optional GUI)
 
 For a graphical user experience, Palomero provides a web application.
-
-### Web App Installation
-
-To use the web app, you need to install `palomero` with the `[webapp]` extra
-dependencies. If you have already installed `palomero`, please uninstall it
-first.
-
-```bash
-python -m pip install "palomero[webapp] @ git+https://github.com/yu-anchen/palomero@main"
-```
 
 ### Running the Web App
 
