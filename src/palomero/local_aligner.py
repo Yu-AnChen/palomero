@@ -14,8 +14,33 @@ from numcodecs import Zstd
 from palom.cli import align_he
 from palom.reader import DaPyramidChannelReader
 
-from palomero.align.aligner import AffineAligner, ElastixAligner, OmeroRoiAligner, QcPlotter
+from palomero.align.aligner import (
+    AffineAligner,
+    ElastixAligner,
+    OmeroRoiAligner,
+    QcPlotter,
+)
 from palomero.models import AlignmentTask
+
+
+def _level_downsamples_from_pyramid(
+    pyramid, candidates=(2, 3, 4, 8, 16, 32, 64), rtol=0.02
+) -> list[float]:
+    """Recompute level downsamples from pyramid shapes with per-step snapping.
+
+    Shape-based ratios between adjacent levels are snapped to a common integer
+    factor when within rtol, preventing floor/ceil errors from accumulating
+    across many levels. Non-standard ratios are kept as floats.
+    """
+    downsamples = [1.0]
+    for i in range(1, len(pyramid)):
+        raw = pyramid[i - 1].shape[1] / pyramid[i].shape[1]
+        snapped = next(
+            (float(c) for c in candidates if abs(raw - c) / c < rtol),
+            raw,
+        )
+        downsamples.append(downsamples[-1] * snapped)
+    return downsamples
 
 
 class LocalPalomeroAligner:
@@ -187,15 +212,15 @@ class LocalPalomeroAligner:
 
         affine_level2 = max(self.reader_to.level_downsamples.keys())
         affine_level1 = max(self.reader_from.level_downsamples.keys())
-        # FIXME: temporary rounding
-        d_moving = np.round(
-            self.reader_to.level_downsamples[affine_level2]
-            / r2.level_downsamples[out_level2]
-        )
-        d_ref = np.round(
-            self.reader_from.level_downsamples[affine_level1]
-            / r1.level_downsamples[out_level1]
-        )
+
+        r1_ds = _level_downsamples_from_pyramid(r1.pyramid)
+        r2_ds = _level_downsamples_from_pyramid(r2.pyramid)
+
+        reader_from_ds = _level_downsamples_from_pyramid(self.reader_from.pyramid)
+        reader_to_ds = _level_downsamples_from_pyramid(self.reader_to.pyramid)
+
+        d_moving = reader_to_ds[affine_level2] / r2_ds[out_level2]
+        d_ref = reader_from_ds[affine_level1] / r1_ds[out_level1]
 
         Affine = skimage.transform.AffineTransform
 
