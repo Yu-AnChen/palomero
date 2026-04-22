@@ -14,7 +14,7 @@ from numcodecs import Zstd
 from palom.cli import align_he
 from palom.reader import DaPyramidChannelReader
 
-from palomero.align.aligner import ElastixAligner, OmeroRoiAligner, QcPlotter
+from palomero.align.aligner import AffineAligner, ElastixAligner, OmeroRoiAligner, QcPlotter
 from palomero.models import AlignmentTask
 
 
@@ -61,6 +61,10 @@ class LocalPalomeroAligner:
 
         print("\n3. Generating QC plots...")
         self._generate_qc_plots()
+
+        if self.task.dry_run:
+            print("\nDry run complete. Skipping image warp.")
+            return
 
         print("\n4. Warping moving image...")
         self._warp_and_save_image()
@@ -127,12 +131,21 @@ class LocalPalomeroAligner:
 
     def _align_images(self) -> None:
         """Runs the core alignment algorithm."""
-        strategy = ElastixAligner(self.task)
-        self.affine_result, self.elastix_result = strategy.align(
-            reader_ref=self.reader_from,
-            reader_moving=self.reader_to,
-            plot=True,
-        )
+        if self.task.only_affine:
+            strategy = AffineAligner(self.task)
+            self.affine_result = strategy.align(
+                reader_ref=self.reader_from,
+                reader_moving=self.reader_to,
+                plot=True,
+            )
+            self.elastix_result = None
+        else:
+            strategy = ElastixAligner(self.task)
+            self.affine_result, self.elastix_result = strategy.align(
+                reader_ref=self.reader_from,
+                reader_moving=self.reader_to,
+                plot=True,
+            )
 
     def _generate_qc_plots(self) -> None:
         """Generates and saves QC plots for the alignment."""
@@ -187,24 +200,26 @@ class LocalPalomeroAligner:
         Affine = skimage.transform.AffineTransform
 
         mx = self.affine_result.affine_matrix
-        _dform = elastix_param_to_dform(self.elastix_result.transform_params)
-
         tform = Affine(scale=1 / d_moving) + Affine(matrix=mx) + Affine(scale=d_ref)
 
-        dform = d_ref * _dform
         out_shape = r1.pyramid[out_level1].shape[1:3]
 
-        dydx = da.array(
-            [
-                dask_image.ndinterp.affine_transform(
-                    dd,
-                    matrix=np.linalg.inv(Affine(scale=d_ref).params),
-                    output_shape=out_shape,
-                    output_chunks=(1024, 1024),
-                )
-                for dd in dform[::-1]
-            ]
-        )
+        if self.elastix_result is not None:
+            _dform = elastix_param_to_dform(self.elastix_result.transform_params)
+            dform = d_ref * _dform
+            dydx = da.array(
+                [
+                    dask_image.ndinterp.affine_transform(
+                        dd,
+                        matrix=np.linalg.inv(Affine(scale=d_ref).params),
+                        output_shape=out_shape,
+                        output_chunks=(1024, 1024),
+                    )
+                    for dd in dform[::-1]
+                ]
+            )
+        else:
+            dydx = da.zeros((2, *out_shape), chunks=(1024, 1024))
         gygx = da.indices(out_shape, dtype="float", chunks=(1024, 1024))
         gygx += dydx
 
