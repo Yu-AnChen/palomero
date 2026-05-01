@@ -88,7 +88,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/72/2d/b17d611c4058cb359931c04e009d576ec228cce10fe042655981b73b7fe7/openslide_python-1.4.3-cp310-cp310-manylinux1_x86_64.manylinux_2_5_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/7a/c2/920ef838e2f0028c8262f16101ec09ebd5969864e5a64c4c05fad0617c56/packaging-26.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3c/4f/5602b6849bed8489ef395a5f166a5adcfd5a83468293ebc414185dfd8b0a/palom-2026.4.1-py3-none-any.whl
-      - pypi: git+https://github.com/Yu-AnChen/palomero.git#2718893c9bd1918027e765ec6d23182db9ccc44e
+      - pypi: git+https://github.com/Yu-AnChen/palomero.git#2e2222066cf19b272177233a63766bd1f63e9119
       - pypi: https://files.pythonhosted.org/packages/71/e7/40fb618334dcdf7c5a316c0e7343c5cd82d3d866edc100d98e29bc945ecd/partd-1.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b5/42/bbcb6051030e1e421d103ce7a8ecadf837aa2f39b8f82ef1a8d37c3d4ebc/pillow-12.2.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/16/bd2f5904557265882108dc2e04f18abc05ab0c2b7082ae9430091daf1d5c/Pint-0.24.4-py3-none-any.whl
@@ -199,7 +199,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/59/dc/56cfcc66ed846646d09afe7f8c70e76f2e7df008b3e3193e10673d4161a6/openslide_python-1.4.3-cp310-cp310-macosx_10_9_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/7a/c2/920ef838e2f0028c8262f16101ec09ebd5969864e5a64c4c05fad0617c56/packaging-26.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3c/4f/5602b6849bed8489ef395a5f166a5adcfd5a83468293ebc414185dfd8b0a/palom-2026.4.1-py3-none-any.whl
-      - pypi: git+https://github.com/Yu-AnChen/palomero.git#2718893c9bd1918027e765ec6d23182db9ccc44e
+      - pypi: git+https://github.com/Yu-AnChen/palomero.git#2e2222066cf19b272177233a63766bd1f63e9119
       - pypi: https://files.pythonhosted.org/packages/71/e7/40fb618334dcdf7c5a316c0e7343c5cd82d3d866edc100d98e29bc945ecd/partd-1.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/27/8e/1d5b39b8ae2bd7650d0c7b6abb9602d16043ead9ebbfef4bc4047454da2a/pillow-12.2.0-cp310-cp310-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/16/bd2f5904557265882108dc2e04f18abc05ab0c2b7082ae9430091daf1d5c/Pint-0.24.4-py3-none-any.whl
@@ -313,7 +313,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/06/98/da4efa53c5f8cf208ea14461b37b417a30318e5d2b2b3930a6aa2ad6fe67/openslide_python-1.4.3-cp310-cp310-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/7a/c2/920ef838e2f0028c8262f16101ec09ebd5969864e5a64c4c05fad0617c56/packaging-26.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3c/4f/5602b6849bed8489ef395a5f166a5adcfd5a83468293ebc414185dfd8b0a/palom-2026.4.1-py3-none-any.whl
-      - pypi: git+https://github.com/Yu-AnChen/palomero.git#2718893c9bd1918027e765ec6d23182db9ccc44e
+      - pypi: git+https://github.com/Yu-AnChen/palomero.git#2e2222066cf19b272177233a63766bd1f63e9119
       - pypi: https://files.pythonhosted.org/packages/71/e7/40fb618334dcdf7c5a316c0e7343c5cd82d3d866edc100d98e29bc945ecd/partd-1.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/34/fc4cb5204896465842767b96d250c08410f01f2f28afc43b257de842eed5/pillow-12.2.0-cp310-cp310-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/16/bd2f5904557265882108dc2e04f18abc05ab0c2b7082ae9430091daf1d5c/Pint-0.24.4-py3-none-any.whl
@@ -2056,9 +2056,9 @@ packages:
   - yamale>=4,<5
   - zarr>=2.17,<3
   requires_python: '>=3.10'
-- pypi: git+https://github.com/Yu-AnChen/palomero.git#2718893c9bd1918027e765ec6d23182db9ccc44e
+- pypi: git+https://github.com/Yu-AnChen/palomero.git#2e2222066cf19b272177233a63766bd1f63e9119
   name: palomero
-  version: 2026.4.2
+  version: 2026.5.1
   requires_dist:
   - omero-py
   - ezomero @ git+https://github.com/Yu-AnChen/ezomero@9a2ab53d673e718cdf5a9dbae6ca37e9a335c815
