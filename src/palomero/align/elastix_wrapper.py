@@ -128,8 +128,8 @@ def run_non_rigid_alignment(
         log_filename = pathlib.Path(log_file.name).name
         try:
             warpped_moving, transform_parameter = itk.elastix_registration_method(
-                ref,
-                moving,
+                itk.image_from_array(np.ascontiguousarray(ref)),
+                itk.image_from_array(np.ascontiguousarray(moving)),
                 fixed_mask=itk.image_from_array(ref_mask),
                 moving_mask=itk.image_from_array(moving_mask),
                 parameter_object=elastix_parameter,
