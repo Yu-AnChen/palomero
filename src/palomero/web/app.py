@@ -10,6 +10,7 @@ import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime
 
+from apswutils.db import COLUMN_TYPE_MAPPING
 from fasthtml.common import *
 
 import palomero.models
@@ -19,6 +20,9 @@ from palomero.constants import MAX_TASK_RUNTIME_SECONDS
 from .config import DB_PATH, PUBLIC_DIR
 
 # ------------------------------------ db ------------------------------------ #
+COLUMN_TYPE_MAPPING["bool"] = "INTEGER"
+COLUMN_TYPE_MAPPING["int | None"] = "INTEGER"
+
 db = database(DB_PATH)
 app, rt = fast_app(
     hdrs=[
