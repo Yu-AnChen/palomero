@@ -147,4 +147,4 @@ def run_non_rigid_alignment(
                 f"Elastix registration failed with the following error\n\n{msg}"
             ) from err
 
-    return warpped_moving, transform_parameter, elastix_parameter
+    return np.array(warpped_moving), transform_parameter, elastix_parameter
