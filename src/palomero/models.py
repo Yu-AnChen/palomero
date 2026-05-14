@@ -26,6 +26,7 @@ class AlignmentTask:
     sample_size_factor: float
     mask_roi_id_from: int | None = None
     mask_roi_id_to: int | None = None
+    no_align: bool = False
     row_num: int | None = None  # For batch mode context
 
 

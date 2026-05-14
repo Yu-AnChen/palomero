@@ -436,6 +436,13 @@ class OmeroRoiAligner:
             log.info("Debug mode is ON")
 
     def execute(self, plot: bool = False) -> None:
+        if self.task.no_align:
+            if self.task.map_rois:
+                rois = self.roi_mapper.fetch_rois(self.task.image_id_from)
+                if not self.task.dry_run:
+                    self.roi_mapper.upload_rois(self.task.image_id_to, rois)
+            return
+
         handler_from = omero_handler.ImageHandler(self.conn, self.task.image_id_from)
         handler_to = omero_handler.ImageHandler(self.conn, self.task.image_id_to)
 

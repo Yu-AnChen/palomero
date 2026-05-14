@@ -6,6 +6,7 @@ import argparse
 import csv
 import inspect
 import logging
+import typing
 import os
 import sys
 import time
@@ -152,6 +153,11 @@ def create_parser() -> argparse.ArgumentParser:
         help="Skip non-rigid alignment.",
     )
     parser.add_argument(
+        "--no-align",
+        action="store_true",
+        help="Skip alignment entirely; copy ROIs as-is (requires --map-rois).",
+    )
+    parser.add_argument(
         "--map-rois",
         action="store_true",
         help="Map ROIs from 'from' image to 'to' image.",
@@ -207,7 +213,7 @@ def prepare_batch_tasks(args: argparse.Namespace) -> list[AlignmentTask]:
             lambda x: (
                 (x[0] not in required_headers) and (x[1] in [str, bool, int, float])
             ),
-            inspect.get_annotations(AlignmentTask).items(),
+            typing.get_type_hints(AlignmentTask).items(),
         )
     )
     # Manually add Optional[int] fields. The caster will be `int`. If the
@@ -366,6 +372,7 @@ def main() -> None:
                     map_rois=args.map_rois,
                     dry_run=args.dry_run,
                     only_affine=args.only_affine,
+                    no_align=args.no_align,
                     sample_size_factor=args.sample_size_factor,
                     mask_roi_id_from=args.mask_roi_id_from,
                     mask_roi_id_to=args.mask_roi_id_to,
