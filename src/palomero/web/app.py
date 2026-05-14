@@ -12,6 +12,8 @@ from datetime import datetime
 
 from apswutils.db import COLUMN_TYPE_MAPPING
 from fasthtml.common import *
+from fastlite import *
+from fasthtml.pico import *
 
 import palomero.models
 import palomero.omero_handler
@@ -69,6 +71,7 @@ class DefaultTask:
     sample_size_factor: float = 3.0
     auto_mask: bool = True
     only_affine: bool = False
+    no_align: bool = False
     map_rois: bool = False
     dry_run: bool = True
 
