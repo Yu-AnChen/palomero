@@ -140,8 +140,8 @@ def strtobool(query: str) -> bool:
         raise ValueError
 
 
-t_project = db.create(Project, pk="project_id")
-t_alignment_task = db.create(AlignmentTask, pk="alignment_task_id")
+t_project = db.create(Project, pk="project_id", transform=True)
+t_alignment_task = db.create(AlignmentTask, pk="alignment_task_id", transform=True)
 
 
 if len(t_project()) == 0:
