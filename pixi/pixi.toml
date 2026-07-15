@@ -20,4 +20,4 @@ zeroc-ice = { url = "https://github.com/glencoesoftware/zeroc-ice-py-macos-unive
 zeroc-ice = { url = "https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp310-cp310-manylinux_2_28_x86_64.whl" }
 
 [pypi-dependencies]
-palomero = { git = "https://github.com/Yu-AnChen/palomero.git", extras = ["webapp"] }
+palomero = { url = "https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.1/palomero-2026.7.1-py3-none-any.whl", extras = ["webapp"] }

@@ -1,8 +1,20 @@
 version: 7
 platforms:
 - name: linux-64
+  virtual-packages:
+  - __unix=0=0
+  - __linux=4.18
+  - __glibc=2.28
+  - __archspec=0=x86_64
 - name: osx-arm64
+  virtual-packages:
+  - __unix=0=0
+  - __osx=13.0
+  - __archspec=0=m1
 - name: win-64
+  virtual-packages:
+  - __win=10.0
+  - __archspec=0=x86_64
 environments:
   default:
     channels:
@@ -34,9 +46,9 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/asciitree-0.3.3-py_2.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2026.6.17-hbd8a1cb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
+      - pypi: direct+https://github.com/Yu-AnChen/ezomero/archive/9a2ab53d673e718cdf5a9dbae6ca37e9a335c815.tar.gz
+      - pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.1/palomero-2026.7.1-py3-none-any.whl
       - pypi: direct+https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp310-cp310-manylinux_2_28_x86_64.whl
-      - pypi: git+https://github.com/Yu-AnChen/ezomero?rev=9a2ab53d673e718cdf5a9dbae6ca37e9a335c815#9a2ab53d673e718cdf5a9dbae6ca37e9a335c815
-      - pypi: git+https://github.com/Yu-AnChen/palomero.git#4cf70754e289d3910586d140a9aa53e4a9b024ff
       - pypi: https://files.pythonhosted.org/packages/02/c8/79eee650c62d2c186598489814468e389b5def0ebe755399ff645b35b1b2/watchfiles-1.2.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/59/a639c0e136441ee91a65b56fdf89e5d075927e7a09c559d1b0f5276577db/fonttools-4.63.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
@@ -146,9 +158,9 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/python-3.10.20-hac0b6dc_1_cpython.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/readline-8.3-h46df422_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/tk-8.6.13-h010d191_3.conda
+      - pypi: direct+https://github.com/Yu-AnChen/ezomero/archive/9a2ab53d673e718cdf5a9dbae6ca37e9a335c815.tar.gz
+      - pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.1/palomero-2026.7.1-py3-none-any.whl
       - pypi: direct+https://github.com/glencoesoftware/zeroc-ice-py-macos-universal2/releases/download/20240131/zeroc_ice-3.6.5-cp310-cp310-macosx_11_0_universal2.whl
-      - pypi: git+https://github.com/Yu-AnChen/ezomero?rev=9a2ab53d673e718cdf5a9dbae6ca37e9a335c815#9a2ab53d673e718cdf5a9dbae6ca37e9a335c815
-      - pypi: git+https://github.com/Yu-AnChen/palomero.git#4cf70754e289d3910586d140a9aa53e4a9b024ff
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/96/92447566d16df59b2a776c0fb82dbc4d9e07cd95062562af01e408583fc4/itsdangerous-2.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/14/52d505b5c59ce73244f59c7a50ecf47093ce4765f116cdb98286a71eeca2/pyyaml-6.0.3-cp310-cp310-macosx_11_0_arm64.whl
@@ -260,9 +272,9 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc-14.5-h1b7c187_39.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.51.36231-h1b9f54f_39.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36231-h1b9f54f_39.conda
+      - pypi: direct+https://github.com/Yu-AnChen/ezomero/archive/9a2ab53d673e718cdf5a9dbae6ca37e9a335c815.tar.gz
+      - pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.1/palomero-2026.7.1-py3-none-any.whl
       - pypi: direct+https://github.com/glencoesoftware/zeroc-ice-py-win-x86_64/releases/download/20240325/zeroc_ice-3.6.5-cp310-cp310-win_amd64.whl
-      - pypi: git+https://github.com/Yu-AnChen/ezomero?rev=9a2ab53d673e718cdf5a9dbae6ca37e9a335c815#9a2ab53d673e718cdf5a9dbae6ca37e9a335c815
-      - pypi: git+https://github.com/Yu-AnChen/palomero.git#4cf70754e289d3910586d140a9aa53e4a9b024ff
       - pypi: https://files.pythonhosted.org/packages/01/aa/62f082da2c91fac1c234bc9ee0066257ce83f0604abd72e4c9d5991f2d84/pydantic_core-2.46.4-cp310-cp310-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/01/e2/06e08230c26049740b2773952fbb12cc7186e5df655a73b1c30ba493e864/pywavelets-1.8.0-cp310-cp310-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -1072,6 +1084,27 @@ packages:
     - vcomp14 >=14.51.36231
   size: 120684
   timestamp: 1781320948530
+- pypi: direct+https://github.com/Yu-AnChen/ezomero/archive/9a2ab53d673e718cdf5a9dbae6ca37e9a335c815.tar.gz
+  name: ezomero
+  version: 0.0.0
+  requires_dist:
+  - omero-py>=5.13.0,<5.20.0
+  - numpy>=1.22,<2.0
+  - pandas ; extra == 'tables'
+  requires_python: '>=3.8'
+- pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.1/palomero-2026.7.1-py3-none-any.whl
+  name: palomero
+  version: 2026.7.1
+  requires_dist:
+  - omero-py
+  - ezomero @ https://github.com/Yu-AnChen/ezomero/archive/9a2ab53d673e718cdf5a9dbae6ca37e9a335c815.tar.gz
+  - palom
+  - itk-elastix
+  - python-fasthtml ; extra == 'webapp'
+  - ruff ; extra == 'dev'
+  - mypy ; extra == 'dev'
+  - pre-commit ; extra == 'dev'
+  requires_python: '>=3.10'
 - pypi: direct+https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp310-cp310-manylinux_2_28_x86_64.whl
   name: zeroc-ice
   version: 3.6.5
@@ -1081,27 +1114,6 @@ packages:
 - pypi: direct+https://github.com/glencoesoftware/zeroc-ice-py-win-x86_64/releases/download/20240325/zeroc_ice-3.6.5-cp310-cp310-win_amd64.whl
   name: zeroc-ice
   version: 3.6.5
-- pypi: git+https://github.com/Yu-AnChen/ezomero?rev=9a2ab53d673e718cdf5a9dbae6ca37e9a335c815#9a2ab53d673e718cdf5a9dbae6ca37e9a335c815
-  name: ezomero
-  version: 0.0.0
-  requires_dist:
-  - omero-py>=5.13.0,<5.20.0
-  - numpy>=1.22,<2.0
-  - pandas ; extra == 'tables'
-  requires_python: '>=3.8'
-- pypi: git+https://github.com/Yu-AnChen/palomero.git#4cf70754e289d3910586d140a9aa53e4a9b024ff
-  name: palomero
-  version: 2026.5.3.dev5+g4cf70754e
-  requires_dist:
-  - omero-py
-  - ezomero @ git+https://github.com/Yu-AnChen/ezomero@9a2ab53d673e718cdf5a9dbae6ca37e9a335c815
-  - palom
-  - itk-elastix
-  - python-fasthtml ; extra == 'webapp'
-  - ruff ; extra == 'dev'
-  - mypy ; extra == 'dev'
-  - pre-commit ; extra == 'dev'
-  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/01/aa/62f082da2c91fac1c234bc9ee0066257ce83f0604abd72e4c9d5991f2d84/pydantic_core-2.46.4-cp310-cp310-win_amd64.whl
   name: pydantic-core
   version: 2.46.4
