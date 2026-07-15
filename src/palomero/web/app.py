@@ -1,4 +1,5 @@
 import csv
+import dataclasses
 import inspect
 import io
 import json
@@ -142,6 +143,22 @@ def strtobool(query: str) -> bool:
 
 t_project = db.create(Project, pk="project_id", transform=True)
 t_alignment_task = db.create(AlignmentTask, pk="alignment_task_id", transform=True)
+
+
+def backfill_null_with_default(table, data_class):
+    # rows predating a column (added by transform) hold NULL; set the
+    # dataclass default so they round-trip like new rows
+    for ff in dataclasses.fields(data_class):
+        if ff.default is dataclasses.MISSING or ff.default is None:
+            continue
+        db.execute(
+            f"UPDATE {table.name} SET {ff.name} = ? WHERE {ff.name} IS NULL",
+            (ff.default,),
+        )
+
+
+backfill_null_with_default(t_project, Project)
+backfill_null_with_default(t_alignment_task, AlignmentTask)
 
 
 if len(t_project()) == 0:
