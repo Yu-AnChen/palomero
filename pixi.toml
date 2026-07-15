@@ -1,0 +1,30 @@
+# Dev environment. `pixi install` here gives a dev env with palomero
+# installed editable. The end-user environment lives in pixi/ and is
+# updated by release.sh + the release workflow.
+[workspace]
+name = "palomero-dev"
+channels = ["conda-forge"]
+platforms = ["win-64", "osx-arm64", "linux-64"]
+
+[dependencies]
+python = "3.10.*"
+asciitree = ">=0.3.3,<0.4"
+python-build = "*"
+
+[pypi-dependencies]
+palomero = { path = ".", editable = true, extras = ["webapp", "dev"] }
+
+# zeroc-ice (required by omero-py) has no usable PyPI wheels; use
+# Glencoe's prebuilt cp310 wheels per platform
+[target.win-64.pypi-dependencies]
+zeroc-ice = { url = "https://github.com/glencoesoftware/zeroc-ice-py-win-x86_64/releases/download/20240325/zeroc_ice-3.6.5-cp310-cp310-win_amd64.whl" }
+
+[target.osx-arm64.pypi-dependencies]
+zeroc-ice = { url = "https://github.com/glencoesoftware/zeroc-ice-py-macos-universal2/releases/download/20240131/zeroc_ice-3.6.5-cp310-cp310-macosx_11_0_universal2.whl" }
+
+[target.linux-64.pypi-dependencies]
+zeroc-ice = { url = "https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp310-cp310-manylinux_2_28_x86_64.whl" }
+
+[tasks]
+web = "palomero-web"
+build-wheel = "python -m build --wheel --outdir dist"

@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # required for setuptools-scm to read tags
+
+      - uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: latest
+          run-install: false
+
+      - name: Build wheel
+        run: bash release.sh build
+
+      - name: Create GitHub release with wheel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --generate-notes \
+            dist/palomero-*.whl
+
+      # Point pixi/pixi.toml at the released wheel URL and re-lock. The
+      # committed pixi/pixi.lock is updated in place, so only the palomero
+      # entry changes; other dependencies keep their pins.
+      - name: Update distribution manifest
+        run: bash release.sh update-manifest "${{ github.ref_name }}"
+
+      - name: Upload environment files to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zip -j "palomero-env-${{ github.ref_name }}.zip" pixi/pixi.toml pixi/pixi.lock
+          gh release upload "${{ github.ref_name }}" \
+            pixi/pixi.toml \
+            pixi/pixi.lock \
+            "palomero-env-${{ github.ref_name }}.zip"
+
+      # Commit the updated manifest back so the next release re-locks
+      # starting from these pins.
+      - name: Commit updated manifest to main
+        run: |
+          cp pixi/pixi.toml pixi/pixi.lock "$RUNNER_TEMP/"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -f main
+          git reset --hard origin/main
+          cp "$RUNNER_TEMP/pixi.toml" "$RUNNER_TEMP/pixi.lock" pixi/
+          git add pixi/pixi.toml pixi/pixi.lock
+          git commit -m "Update distribution env for ${{ github.ref_name }} [skip ci]"
+          git push origin main

@@ -34,27 +34,26 @@ It uses a robust, two-step alignment process:
 automatically selects the correct platform-specific dependencies (including
 ZeroC Ice) for Windows, macOS, and Linux.
 
-1. **Download the environment files** into a new directory:
+1. **Download the environment files** of the [latest
+   release](https://github.com/Yu-AnChen/palomero/releases/latest) into a new
+   directory:
 
     ```bash
     mkdir palomero-env && cd palomero-env
 
-    curl -OL https://raw.githubusercontent.com/Yu-AnChen/palomero/refs/heads/main/pixi/pixi.toml
-    curl -OL https://raw.githubusercontent.com/Yu-AnChen/palomero/refs/heads/main/pixi/pixi.lock
+    curl -OL https://github.com/Yu-AnChen/palomero/releases/latest/download/pixi.toml
+    curl -OL https://github.com/Yu-AnChen/palomero/releases/latest/download/pixi.lock
     ```
+
+    > **Windows:** in PowerShell, use `curl.exe` instead of `curl`. To install
+    > a specific version, replace `latest/download` with
+    > `download/<tag>`, e.g. `download/v2026.5.2`.
 
 2. **Install the environment:**
 
     ```bash
     pixi install --locked
     ```
-
-    > **Windows:** If git is not installed on your system, run this instead —
-    > it temporarily installs git, runs the install, then removes it:
-    >
-    > ```bash
-    > pixi global install git && pixi install --locked && pixi global remove git
-    > ```
 
 3. **Activate the environment:**
 
@@ -215,3 +214,25 @@ For example, an ROI with digit label `009` and one mask labelled `Full ROI` prod
 ```
 
 This detection is automatic — no extra flags are needed. Non-GeoMx ROIs are processed normally.
+
+## Development
+
+The repo root contains a pixi dev environment with palomero installed in
+editable mode:
+
+```bash
+git clone https://github.com/Yu-AnChen/palomero.git && cd palomero
+pixi install          # create the dev environment
+pixi run web          # launch the web app from the working copy
+pixi run build-wheel  # build a wheel into dist/
+```
+
+### Releasing
+
+Push a tag (e.g. `v2026.7.1`) and GitHub Actions builds the wheel, creates a
+GitHub release, and attaches `pixi.toml`/`pixi.lock` pointing at the released
+wheel — the files the Installation section downloads. The committed
+`pixi/pixi.lock` is re-locked in place, so a release only updates the
+palomero entry; other dependencies keep their pinned versions. To
+deliberately refresh those pins, run `pixi update --manifest-path
+pixi/pixi.toml` and commit the result before tagging.
