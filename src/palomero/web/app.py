@@ -13,7 +13,7 @@ from datetime import datetime
 
 from apswutils.db import COLUMN_TYPE_MAPPING
 from fasthtml.common import *
-from fastlite import *
+from fastlite import database
 from fasthtml.pico import *
 
 import palomero.models
