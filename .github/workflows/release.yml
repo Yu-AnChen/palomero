@@ -60,5 +60,9 @@ jobs:
           git reset --hard origin/main
           cp "$RUNNER_TEMP/pixi.toml" "$RUNNER_TEMP/pixi.lock" pixi/
           git add pixi/pixi.toml pixi/pixi.lock
-          git commit -m "Update distribution env for ${{ github.ref_name }} [skip ci]"
-          git push origin main
+          if git diff --cached --quiet; then
+            echo "Manifest unchanged; nothing to commit."
+          else
+            git commit -m "Update distribution env for ${{ github.ref_name }} [skip ci]"
+            git push origin main
+          fi
