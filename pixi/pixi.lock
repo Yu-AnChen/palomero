@@ -47,7 +47,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2026.6.17-hbd8a1cb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
       - pypi: direct+https://github.com/Yu-AnChen/ezomero/archive/9a2ab53d673e718cdf5a9dbae6ca37e9a335c815.tar.gz
-      - pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.1/palomero-2026.7.1-py3-none-any.whl
+      - pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.2/palomero-2026.7.2-py3-none-any.whl
       - pypi: direct+https://github.com/glencoesoftware/zeroc-ice-py-linux-x86_64/releases/download/20240202/zeroc_ice-3.6.5-cp310-cp310-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/02/c8/79eee650c62d2c186598489814468e389b5def0ebe755399ff645b35b1b2/watchfiles-1.2.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -159,7 +159,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/readline-8.3-h46df422_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/tk-8.6.13-h010d191_3.conda
       - pypi: direct+https://github.com/Yu-AnChen/ezomero/archive/9a2ab53d673e718cdf5a9dbae6ca37e9a335c815.tar.gz
-      - pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.1/palomero-2026.7.1-py3-none-any.whl
+      - pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.2/palomero-2026.7.2-py3-none-any.whl
       - pypi: direct+https://github.com/glencoesoftware/zeroc-ice-py-macos-universal2/releases/download/20240131/zeroc_ice-3.6.5-cp310-cp310-macosx_11_0_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/96/92447566d16df59b2a776c0fb82dbc4d9e07cd95062562af01e408583fc4/itsdangerous-2.2.0-py3-none-any.whl
@@ -273,7 +273,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.51.36231-h1b9f54f_39.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36231-h1b9f54f_39.conda
       - pypi: direct+https://github.com/Yu-AnChen/ezomero/archive/9a2ab53d673e718cdf5a9dbae6ca37e9a335c815.tar.gz
-      - pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.1/palomero-2026.7.1-py3-none-any.whl
+      - pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.2/palomero-2026.7.2-py3-none-any.whl
       - pypi: direct+https://github.com/glencoesoftware/zeroc-ice-py-win-x86_64/releases/download/20240325/zeroc_ice-3.6.5-cp310-cp310-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/01/aa/62f082da2c91fac1c234bc9ee0066257ce83f0604abd72e4c9d5991f2d84/pydantic_core-2.46.4-cp310-cp310-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/01/e2/06e08230c26049740b2773952fbb12cc7186e5df655a73b1c30ba493e864/pywavelets-1.8.0-cp310-cp310-win_amd64.whl
@@ -1092,9 +1092,9 @@ packages:
   - numpy>=1.22,<2.0
   - pandas ; extra == 'tables'
   requires_python: '>=3.8'
-- pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.1/palomero-2026.7.1-py3-none-any.whl
+- pypi: direct+https://github.com/Yu-AnChen/palomero/releases/download/v2026.7.2/palomero-2026.7.2-py3-none-any.whl
   name: palomero
-  version: 2026.7.1
+  version: 2026.7.2
   requires_dist:
   - omero-py
   - ezomero @ https://github.com/Yu-AnChen/ezomero/archive/9a2ab53d673e718cdf5a9dbae6ca37e9a335c815.tar.gz
